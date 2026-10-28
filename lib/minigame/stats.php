@@ -29,6 +29,9 @@ function mg_stats_user(string $dayKey, int $userId): array
         'best_score' => (int)($row['best_score'] ?? 0),
         'best_cells' => (int)($row['best_cells'] ?? 0),
         'cells_total' => (int)($row['cells_total'] ?? 0),
+        'kills_total' => (int)($row['kills_total'] ?? 0),
+        'boss_kills' => (int)($row['boss_kills'] ?? 0),
+        'no_damage_runs' => (int)($row['no_damage_runs'] ?? 0),
         'last_ts' => (int)($row['last_ts'] ?? 0),
     ];
 }
@@ -47,6 +50,9 @@ function mg_stats_bump(string $dayKey, int $userId, array $result, int $minTicks
         'best_score' => 0,
         'best_cells' => 0,
         'cells_total' => 0,
+        'kills_total' => 0,
+        'boss_kills' => 0,
+        'no_damage_runs' => 0,
         'last_ts' => 0,
     ];
     $row['runs'] = (int)$row['runs'] + 1;
@@ -55,6 +61,13 @@ function mg_stats_bump(string $dayKey, int $userId, array $result, int $minTicks
         $row['valid_runs'] = (int)$row['valid_runs'] + 1;
         $row['best_score'] = max((int)$row['best_score'], (int)($result['score'] ?? 0));
         $row['best_cells'] = max((int)$row['best_cells'], (int)($result['cells'] ?? 0));
+        $row['kills_total'] = (int)$row['kills_total'] + (int)($result['kills'] ?? 0);
+        if (!empty($result['bossKilled'])) {
+            $row['boss_kills'] = (int)$row['boss_kills'] + 1;
+        }
+        if ((int)($result['damageTaken'] ?? 0) === 0) {
+            $row['no_damage_runs'] = (int)$row['no_damage_runs'] + 1;
+        }
     }
     $row['last_ts'] = $now;
     $day['users'][$key] = $row;
@@ -74,6 +87,12 @@ function mg_task_progress_value(string $metric, array $stats): int
             return (int)($stats['best_cells'] ?? 0);
         case 'cells_total':
             return (int)($stats['cells_total'] ?? 0);
+        case 'kills_total':
+            return (int)($stats['kills_total'] ?? 0);
+        case 'boss_kills':
+            return (int)($stats['boss_kills'] ?? 0);
+        case 'no_damage_runs':
+            return (int)($stats['no_damage_runs'] ?? 0);
         default:
             return 0;
     }

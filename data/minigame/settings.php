@@ -12,7 +12,7 @@
 declare(strict_types=1);
 
 return [
-    'schema' => 2,
+    'schema' => 3,
 
     // Bayraklar birbirinden bağımsızdır: ödülleri kapatmak oyunu kapatmaz.
     'flags' => [
@@ -26,17 +26,17 @@ return [
 
     'limits' => [
         'max_ranked_runs_per_day' => 20, // 0 = sınırsız
-        'daily_user_reward_cap' => 100,  // 0 = sınırsız
-        'daily_global_budget' => 5000,   // 0 = sınırsız
-        'run_ttl_seconds' => 180,        // koşu token'ı ömrü
+        'daily_user_reward_cap' => 200,  // 0 = sınırsız
+        'daily_global_budget' => 8000,   // 0 = sınırsız
+        'run_ttl_seconds' => 300,        // koşu token'ı ömrü (tur 180 sn'ye kadar)
         'min_valid_ticks' => 600,        // 10 sn altı tur: ödül yok, tabloya girmez
-        'max_inputs' => 600,             // istek başına girdi sınırı
+        'max_inputs' => 3000,            // istek başına girdi sınırı (ateş + eğilme)
         'retention_days' => 30,          // koşu kaydı saklama
         'timing_tolerance_ticks' => 6,   // saat farkı toleransı
     ],
 
     // Günlük görevler: her biri günde BİR kez değerlendirilir.
-    // metric: valid_runs | best_score | best_cells
+    // metric: valid_runs | best_score | best_cells | kills_total | boss_kills | no_damage_runs
     'tasks' => [
         [
             'id' => 'gunluk-tur',
@@ -49,11 +49,11 @@ return [
             'enabled' => 1,
         ],
         [
-            'id' => 'skor-800',
-            'title' => '800 kulübü',
-            'description' => 'Tek turda 800 puan topla.',
+            'id' => 'skor-1500',
+            'title' => '1500 kulübü',
+            'description' => 'Tek turda 1500 puan topla.',
             'metric' => 'best_score',
-            'target' => 800,
+            'target' => 1500,
             'reward' => 25,
             'order' => 2,
             'enabled' => 1,
@@ -69,13 +69,33 @@ return [
             'enabled' => 1,
         ],
         [
+            'id' => 'avci-15',
+            'title' => 'Temizlik ekibi',
+            'description' => 'Bugün toplam 15 düşman alt et.',
+            'metric' => 'kills_total',
+            'target' => 15,
+            'reward' => 25,
+            'order' => 4,
+            'enabled' => 1,
+        ],
+        [
+            'id' => 'boss-avcisi',
+            'title' => 'Boss avcısı',
+            'description' => 'Bir turda 3 fazlı boss\'u alt et.',
+            'metric' => 'boss_kills',
+            'target' => 1,
+            'reward' => 40,
+            'order' => 5,
+            'enabled' => 1,
+        ],
+        [
             'id' => 'uc-tur',
             'title' => 'Isınma turu',
             'description' => 'Bugün 3 geçerli tur tamamla.',
             'metric' => 'valid_runs',
             'target' => 3,
             'reward' => 30,
-            'order' => 4,
+            'order' => 6,
             'enabled' => 1,
         ],
     ],

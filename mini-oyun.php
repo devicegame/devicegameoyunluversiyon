@@ -45,13 +45,14 @@ require __DIR__ . '/header.php';
             <span class="mg-eyebrow">Device Game · Mini oyun</span>
             <h1>Overcharge: <span>Kaçış</span></h1>
             <p>
-                Enerji hücrelerini topla, engellerden kaç, ızgarada hayatta kal.
-                Turlar 1–2 dakika sürer; skorun sunucuda aynı seed ile yeniden
+                Enerji hücrelerini topla, düşmanları vur, baş üstü kirişlerin
+                altından eğilerek geç ve 60. saniyede gelen üç fazlı boss'u devir.
+                Turlar 1–3 dakika sürer; skorun sunucuda aynı seed ile yeniden
                 hesaplanır. Kazandığın D-Coin mevcut cüzdanına eklenir.
             </p>
             <div class="mg-hero-tags">
-                <span>Klavye: Boşluk / ↑</span>
-                <span>Dokunmatik: dokun–bırak</span>
+                <span>Klavye: Boşluk zıpla · ↓ eğil · J ateş · Shift dash</span>
+                <span>Dokunmatik: sol eğil · orta ateş · sağ zıpla</span>
                 <span>30 / 60 / 120 Hz aynı hız</span>
             </div>
         </div>
@@ -110,7 +111,7 @@ require __DIR__ . '/header.php';
                 width="960"
                 height="540"
                 role="img"
-                aria-label="Overcharge: Kaçış oyun alanı. Boşluk veya yukarı ok ile zıpla, bırakınca zıplama kısalır."
+                aria-label="Overcharge: Kaçış oyun alanı. Boşluk zıpla, aşağı ok eğil, J ateş, Shift dash. Dokunmatikte sol bölge eğil, orta bölge ateş, sağ bölge zıpla."
             ></canvas>
 
             <div class="mg-overlay" id="mg-overlay">
@@ -125,7 +126,12 @@ require __DIR__ . '/header.php';
                 <button type="button" class="mg-icon-btn" id="mg-fullscreen" aria-label="Tam ekran">⛶</button>
             </div>
 
-            <button type="button" class="mg-jump" id="mg-jump" aria-label="Zıpla" disabled>ZIPLA</button>
+            <div class="mg-pad" id="mg-pad" role="group" aria-label="Oyun kontrolleri">
+                <button type="button" class="mg-pad-btn" id="mg-crouch" aria-label="Eğil (basılı tut)" disabled>EĞİL</button>
+                <button type="button" class="mg-pad-btn mg-pad-fire" id="mg-fire" aria-label="Ateş (basılı tut)" disabled>ATEŞ</button>
+                <button type="button" class="mg-pad-btn mg-pad-dash" id="mg-dash" aria-label="Dash (kısa dokunulmazlık)" disabled>DASH</button>
+                <button type="button" class="mg-pad-btn mg-pad-jump" id="mg-jump" aria-label="Zıpla" disabled>ZIPLA</button>
+            </div>
         </div>
 
         <p class="mg-sub mg-stage-hint">
@@ -156,11 +162,14 @@ require __DIR__ . '/header.php';
             <section class="mg-card mg-rules" aria-labelledby="mg-rules-title">
                 <h2 id="mg-rules-title">Nasıl oynanır</h2>
                 <ul>
-                    <li><b>Zıpla:</b> Boşluk, ↑, W veya ekrana/ ZIPLA düğmesine dokun.</li>
-                    <li><b>Kısa zıplama:</b> Tuşu/dokunuşu bırak; karakter daha alçak atlar.</li>
-                    <li><b>Enerji hücresi:</b> Her hücre <b>+15 puan</b>, mesafe de puan getirir.</li>
-                    <li><b>Hız:</b> Her 10 saniyede kademe artar; zorluk yükselir.</li>
-                    <li><b>Bitiş:</b> Engelle çarpınca ya da 120 saniye dolunca tur biter.</li>
+                    <li><b>Zıpla:</b> Boşluk, ↑, W veya ZIPLA. Erken bırakırsan daha alçak atlar.</li>
+                    <li><b>Eğil:</b> ↓, S ya da EĞİL düğmesi. Baş üstü kirişlerin altından yalnızca eğilerek geçilir.</li>
+                    <li><b>Ateş:</b> J, F ya da ATEŞ. Blaster şarjı kendini yeniler; <b>plazma</b> düşmanlardan düşer.</li>
+                    <li><b>Dash:</b> Shift ya da DASH. Kısa süre dokunulmazlık verir, bekleme süresi vardır.</li>
+                    <li><b>Düşmanlar:</b> Muhafız temasta vurur, drone ve taret ateş eder. Her düşman <b>+40 puan</b>.</li>
+                    <li><b>Boss:</b> 60. saniyede girer, üç fazda saldırır. Devirirsen <b>+500 puan</b> ve tamir kiti.</li>
+                    <li><b>Can:</b> 100 HP. Tamir kiti +25 can, kalkan bir vuruşu emer.</li>
+                    <li><b>Bitiş:</b> Canın biterse ya da 180 saniye dolunca tur biter.</li>
                 </ul>
             </section>
 
@@ -172,6 +181,7 @@ require __DIR__ . '/header.php';
                     <li>Sekme arka plana geçerse sıralı tur iptal edilir (avantaj oluşmasın diye).</li>
                     <li>Kozmetikler yalnızca görseldir: hız, hitbox ve skoru değiştirmez.</li>
                     <li>Otomatik oynatıcılar (bot) geçerli girdi üretebilir; bu bilinen bir sınırdır ve inceleme ile yönetilir.</li>
+                    <li>Silah, can ve dash değerleri motor sabitidir; kozmetik satın alımı bunları değiştirmez.</li>
                 </ul>
             </section>
         </div>

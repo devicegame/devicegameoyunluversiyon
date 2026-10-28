@@ -7,7 +7,7 @@
  */
 declare(strict_types=1);
 
-const MG_SETTINGS_SCHEMA = 2;
+const MG_SETTINGS_SCHEMA = 3;
 
 /** Başlangıç ayarları (seed). */
 function mg_default_settings(): array
@@ -18,13 +18,58 @@ function mg_default_settings(): array
         $defaults = is_file($path) ? (array)require $path : [
             'schema' => MG_SETTINGS_SCHEMA,
             'flags' => ['game' => 1, 'practice' => 1, 'rewards' => 1, 'shop' => 0, 'leaderboard' => 1, 'season' => 0],
-            'limits' => ['max_ranked_runs_per_day' => 20, 'daily_user_reward_cap' => 100, 'daily_global_budget' => 5000],
+            'limits' => [
+                'max_ranked_runs_per_day' => 20, 'daily_user_reward_cap' => 200, 'daily_global_budget' => 8000,
+                'run_ttl_seconds' => 300, 'min_valid_ticks' => 600, 'max_inputs' => 3000,
+                'retention_days' => 30, 'timing_tolerance_ticks' => 6,
+            ],
             'tasks' => [],
             'economy' => ['approved' => 0, 'note' => ''],
             'maintenance_note' => '',
         ];
     }
     return $defaults;
+}
+
+/**
+ * Şema yükseltmesi (v1 → v3).
+ *
+ * v2 motoru 180 saniyelik turlar üretir: koşu token'ı ve girdi sınırı bu
+ * süreye yetmezse GEÇERLİ bir tur "expired" ya da "invalid_input" olur.
+ * Bu yüzden yalnızca operasyonel limitler taban değere çekilir; ödül
+ * limitleri (cap/bütçe) işletme kararıdır, dokunulmaz.
+ */
+function mg_settings_migrate(array $stored): array
+{
+    if ((int)($stored['schema'] ?? 0) >= MG_SETTINGS_SCHEMA) {
+        return $stored;
+    }
+    $stored['schema'] = MG_SETTINGS_SCHEMA;
+    $limits = isset($stored['limits']) && is_array($stored['limits']) ? $stored['limits'] : [];
+    $limits['run_ttl_seconds'] = max(300, (int)($limits['run_ttl_seconds'] ?? 0));
+    $limits['max_inputs'] = max(3000, (int)($limits['max_inputs'] ?? 0));
+    $limits['min_valid_ticks'] = max(1, (int)($limits['min_valid_ticks'] ?? 600));
+    $limits['retention_days'] = max(1, (int)($limits['retention_days'] ?? 30));
+    $limits['timing_tolerance_ticks'] = max(0, (int)($limits['timing_tolerance_ticks'] ?? 6));
+    $stored['limits'] = $limits;
+    // v1 görev seti (ya da boş liste) yeni varsayılan görevlerle değiştirilir;
+    // yönetici kendi görevlerini tanımladıysa dokunulmaz.
+    $legacyTaskIds = ['gunluk-tur', 'skor-800', 'hucre-15', 'uc-tur'];
+    if (empty($stored['tasks']) || !is_array($stored['tasks'])) {
+        unset($stored['tasks']);
+    } else {
+        $ids = [];
+        foreach ($stored['tasks'] as $task) {
+            if (is_array($task) && isset($task['id'])) {
+                $ids[] = (string)$task['id'];
+            }
+        }
+        if ($ids && array_diff($ids, $legacyTaskIds) === []) {
+            unset($stored['tasks']);
+        }
+    }
+    mg_write_json('settings.json', $stored);
+    return $stored;
 }
 
 /** Depodaki ayarları varsayılanlarla birleştirir (eksik alan = varsayılan). */
@@ -37,6 +82,9 @@ function mg_settings(bool $fresh = false): array
     mg_ensure_storage();
     $defaults = mg_default_settings();
     $stored = mg_read_json('settings.json', []);
+    if ($stored) {
+        $stored = mg_settings_migrate($stored);
+    }
     if (!$stored) {
         $settings = $defaults;
         mg_write_json('settings.json', $settings);

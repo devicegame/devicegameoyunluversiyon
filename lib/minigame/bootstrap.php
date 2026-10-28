@@ -62,7 +62,7 @@ function mg_public_state(?array $user): array
         'shop_enabled' => $flags['shop'] ?? false,
         'leaderboard_enabled' => $flags['leaderboard'] ?? false,
         'practice_enabled' => $flags['practice'] ?? false,
-        'max_inputs' => mg_limit('max_inputs', 600),
+        'max_inputs' => mg_limit('max_inputs', 3000),
     ];
 
     if ($user) {

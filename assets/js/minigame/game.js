@@ -1,14 +1,21 @@
 /**
- * Device Game — "Overcharge: Kaçış" sahne denetleyicisi.
+ * Device Game — "Overcharge: Kaçış" sahne denetleyicisi (v2).
  *
- * SADECE sunum + girdi toplama yapar. Fizik ve skor `engine.js` içindedir
- * (sunucuyla birebir aynı motor). Skor burada hesaplanmaz.
+ * SADECE sunum + girdi toplama yapar. Fizik, düşmanlar ve skor `engine.js`
+ * içindedir (sunucuyla birebir aynı motor). Skor burada hesaplanmaz.
  *
  * Zamanlama: requestAnimationFrame yalnızca birikimi besler; simülasyon her
  * zaman sabit 1/60 sn adımlarla ilerler → 30/60/120 Hz ekranlarda oyun hızı
  * ve fizik aynıdır.
+ *
+ * GİRDİ MODELİ (v2)
+ * Motor tick başına TEK aksiyon kabul eder. Bu yüzden tuş/dokunma olayları
+ * "niyet" olarak tutulur ve her tick'te öncelik sırasına göre bire çevrilir:
+ *   zıpla > dash > bırak > eğil/kalk > ateş
+ * Kaydedilen girdi listesi tam olarak yerel simülasyona uygulanan listedir;
+ * sunucu aynı listeyi aynı tick'lerde oynatır.
  */
-import { ACTIONS, CONFIG, createState, step, resultOf, scoreFor } from './engine.js';
+import { ACTIONS, CONFIG, WEAPONS, createState, step, resultOf, scoreFor } from './engine.js';
 
 const TICK = 1 / CONFIG.tickHz;
 const PX = CONFIG.unitsPerPx;
@@ -16,6 +23,9 @@ const GROUND_Y = CONFIG.groundY;
 const PLAYER_SCREEN_X = CONFIG.playerX / PX; // 120 px
 const PLAYER_W = CONFIG.playerW / PX;        // 28 px
 const PLAYER_H = CONFIG.playerH / PX;        // 40 px
+const CROUCH_H = CONFIG.crouchH / PX;        // 22 px
+
+const STAND_RETRY = 6;    // kiriş altında kalkma denemeleri arası tick
 
 const DEFAULT_VISUAL = Object.freeze({
     body: 'runner',
@@ -28,12 +38,14 @@ const DEFAULT_VISUAL = Object.freeze({
     frame_color: '#63f5e8',
 });
 
+const WEAPON_LABEL = { blaster: 'BLASTER', plasma: 'PLAZMA' };
+
 function clamp(value, min, max) {
     return Math.max(min, Math.min(max, value));
 }
 
 /**
- * @param {{canvas: HTMLCanvasElement, onEnd?: Function, onState?: Function, onCountdown?: Function}} options
+ * @param {{canvas: HTMLCanvasElement, onEnd?: Function, onState?: Function, onCountdown?: Function, onEvent?: Function}} options
  */
 export function createGame(options) {
     const canvas = options.canvas;
@@ -41,6 +53,7 @@ export function createGame(options) {
     const onEnd = options.onEnd || function () {};
     const onState = options.onState || function () {};
     const onCountdown = options.onCountdown || function () {};
+    const onEvent = options.onEvent || function () {};
 
     const reduceQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
 
@@ -60,13 +73,28 @@ export function createGame(options) {
     let audio = null;
     let shake = 0;
     let flash = 0;
-    let trail = [];
+    let hurt = 0;
+    let muzzles = [];
+    const trailStack = [];
     let sparks = [];
     let idleT = 0;
     let dpr = 1;
 
-    // Girdi kuyruğu: olay anındaki tick'e yazılır, o tick'te uygulanır.
-    const queued = [];
+    // Girdi niyetleri (olay anında işaretlenir, tick'te tüketilir).
+    const intent = { jump: false, release: false, dash: false, crouch: false, fire: false, fireOnce: false };
+    let standTryAt = -999;
+    const touches = new Map(); // pointerId → 'jump' | 'crouch' | 'fire'
+
+    function resetIntent() {
+        intent.jump = false;
+        intent.release = false;
+        intent.dash = false;
+        intent.crouch = false;
+        intent.fire = false;
+        intent.fireOnce = false;
+        standTryAt = -999;
+        touches.clear();
+    }
 
     function applyDpr() {
         const next = (window.devicePixelRatio || 1) >= 1.5 ? 2 : 1;
@@ -120,14 +148,15 @@ export function createGame(options) {
         ranked = !!data.ranked;
         run = createState((Number(data.seed) >>> 0) || 0x9E3779B9);
         inputs = [];
-        queued.length = 0;
+        resetIntent();
         acc = 0;
         countdownStart = performance.now();
         countdownShown = -1;
-        trail = [];
         sparks = [];
+        muzzles = [];
         shake = 0;
         flash = 0;
+        hurt = 0;
         onCountdown(3);
         setState('countdown');
         beep(520, 0.06, 'triangle');
@@ -150,57 +179,167 @@ export function createGame(options) {
         };
         setState('over');
         flash = 1;
-        if (!reduced) shake = 12;
-        beep(reason === 'time' ? 640 : 120, reason === 'time' ? 0.22 : 0.32, 'sawtooth', 0.07);
+        if (!reduced) shake = 14;
+        beep(reason === 'hp' ? 110 : 640, reason === 'hp' ? 0.42 : 0.24, 'sawtooth', 0.07);
+        onEvent({ type: reason === 'hp' ? 'down' : 'finish', result });
         onEnd(payload);
     }
 
     /* ---------------- simülasyon ---------------- */
 
+    /**
+     * Bu tick'te uygulanacak tek aksiyonu seçer. Öncelik: zıpla > dash >
+     * bırak > eğil/kalk > ateş. Seçilen aksiyon kaydedilir.
+     */
+    function chooseAction() {
+        if (!run) return ACTIONS.NONE;
+
+        if (intent.jump) {
+            if (run.crouch === 1) {
+                // Eğikken zıplanmaz: önce kalk.
+                intent.crouch = false;
+                if (run.tick >= standTryAt) {
+                    standTryAt = run.tick + STAND_RETRY;
+                    return ACTIONS.STAND;
+                }
+            } else if (run.grounded === 1 || run.coyote > 0) {
+                intent.jump = false;
+                return ACTIONS.JUMP;
+            }
+        }
+
+        if (intent.dash) {
+            intent.dash = false;
+            if (run.tick >= run.dashReadyAt) return ACTIONS.DASH;
+        }
+
+        if (intent.release) {
+            intent.release = false;
+            return ACTIONS.RELEASE;
+        }
+
+        if (intent.crouch) {
+            if (run.crouch === 0 && run.grounded === 1) return ACTIONS.CROUCH;
+        } else if (run.crouch === 1 && run.tick >= standTryAt) {
+            standTryAt = run.tick + STAND_RETRY;
+            return ACTIONS.STAND;
+        }
+
+        // Ateş: şarj varsa her tick'te bir atış. Toplam atış sayısı şarj +
+        // yenilenme ile sınırlı olduğundan ayrı bir kadans gerekmez; bu, basılı
+        // tutunca botla aynı DPS'i verir ve girdi sınırını aşmaz.
+        if (intent.fireOnce) {
+            intent.fireOnce = false;
+            if (run.shots > 0) return ACTIONS.FIRE;
+        }
+        if (intent.fire && run.shots > 0) return ACTIONS.FIRE;
+        return ACTIONS.NONE;
+    }
+
     function stepOnce() {
         if (!run) return;
-        let action = ACTIONS.NONE;
-        while (queued.length && queued[0].tick <= run.tick) {
-            action = queued.shift().action;
-        }
-        const cellsBefore = run.cells;
+        const tick = run.tick;
+        const action = chooseAction();
+        const before = {
+            cells: run.cells,
+            kills: run.kills,
+            damage: run.damageTaken,
+            shots: run.shotsFired,
+            boss: run.bossSpawned,
+            bossKilled: run.bossKilled,
+        };
         const status = step(run, action);
-        if (run.cells > cellsBefore) {
+        if (action !== ACTIONS.NONE && inputs.length && inputs[inputs.length - 1][0] === tick) {
+            inputs[inputs.length - 1][1] = action;
+        } else if (action !== ACTIONS.NONE) {
+            inputs.push([tick, action]);
+        }
+
+        if (action === ACTIONS.FIRE && run.shotsFired > before.shots) {
+            muzzles.push({ t: 1 });
+            beep(run.weapon === 'plasma' ? 300 : 620, 0.045, 'square', 0.035);
+        }
+        if (run.cells > before.cells) {
             beep(880 + run.cells * 4, 0.05, 'sine', 0.04);
             if (!reduced) {
                 sparks.push({ x: PLAYER_SCREEN_X + PLAYER_W / 2, y: GROUND_Y - run.y / PX - PLAYER_H / 2, life: 1 });
             }
         }
-        if (status === 'collision') {
-            finish('collision');
-        } else if (status === 'time') {
+        if (run.kills > before.kills) {
+            beep(420, 0.07, 'triangle', 0.05);
+        }
+        if (run.damageTaken > before.damage) {
+            beep(150, 0.16, 'sawtooth', 0.06);
+            hurt = 1;
+            if (!reduced) shake = Math.max(shake, 7);
+        }
+        if (run.bossSpawned === 1 && !before.boss) {
+            beep(180, 0.4, 'sawtooth', 0.07);
+            onEvent({ type: 'boss' });
+        }
+        if (run.bossKilled === 1 && before.bossKilled === 0) {
+            flash = 1;
+            beep(760, 0.3, 'triangle', 0.08);
+            onEvent({ type: 'boss_down' });
+        }
+
+        if (status === 'time') {
             finish('time');
+        } else if (status === 'hp') {
+            finish('hp');
         } else if (!reduced && run.tick % 2 === 0 && visual.trail) {
-            trail.push({ x: PLAYER_SCREEN_X + 4, y: GROUND_Y - run.y / PX - 8, life: 1 });
-            if (trail.length > 30) trail.shift();
+            trailPush();
         }
     }
 
+    function trailPush() {
+        if (!run) return;
+        trailStack.push({ x: PLAYER_SCREEN_X + 4, y: GROUND_Y - run.y / PX - (run.crouch === 1 ? CROUCH_H : PLAYER_H) + 8, life: 1 });
+        if (trailStack.length > 30) trailStack.shift();
+    }
+
     /**
-     * Oyuncu girdisi. Aksiyon, çağrıldığı tick'e yazılır ve o tick'te
-     * uygulanır; sunucu aynı listeyi aynı sırayla oynatır.
+     * Tek seferlik aksiyon (zıpla, dash, tek atış). Basılı tutma için
+     * `setHold` kullanılır.
      */
     function requestAction(action) {
-        if (state !== 'running' || !run) return;
-        if (action !== ACTIONS.JUMP && action !== ACTIONS.RELEASE) return;
-        const tick = run.tick;
-        const lastInput = inputs.length ? inputs[inputs.length - 1] : null;
-        if (lastInput && lastInput[0] === tick) {
-            lastInput[1] = action;
-            if (queued.length && queued[queued.length - 1].tick === tick) {
-                queued[queued.length - 1].action = action;
-            } else {
-                queued.push({ tick, action });
-            }
-            return;
+        if (state !== 'running' || !run) return false;
+        if (action === ACTIONS.JUMP) {
+            intent.jump = true;
+            return true;
         }
-        inputs.push([tick, action]);
-        queued.push({ tick, action });
+        if (action === ACTIONS.RELEASE) {
+            intent.release = true;
+            return true;
+        }
+        if (action === ACTIONS.DASH) {
+            intent.dash = true;
+            return true;
+        }
+        if (action === ACTIONS.FIRE) {
+            intent.fireOnce = true;
+            return true;
+        }
+        if (action === ACTIONS.CROUCH) {
+            intent.crouch = true;
+            return true;
+        }
+        if (action === ACTIONS.STAND) {
+            intent.crouch = false;
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * Basılı tutulan girdiler: 'fire' (otomatik ateş), 'crouch' (eğil).
+     * Mobil düğmeler ve klavye aynı yolu kullanır.
+     */
+    function setHold(name, value) {
+        if (state !== 'running' || !run) return;
+        const on = !!value;
+        if (name === 'fire') intent.fire = on;
+        else if (name === 'crouch') intent.crouch = on;
     }
 
     /* ---------------- döngü ---------------- */
@@ -232,7 +371,6 @@ export function createGame(options) {
                 stepOnce();
                 guard += 1;
             }
-            // Uzun bir takılma olduysa birikimi taşırma (yavaş cihazlar).
             if (acc > TICK * 8) acc = 0;
         } else {
             idleT += dt;
@@ -240,9 +378,14 @@ export function createGame(options) {
 
         if (shake > 0) shake = Math.max(0, shake - dt * 40);
         if (flash > 0) flash = Math.max(0, flash - dt * 3);
+        if (hurt > 0) hurt = Math.max(0, hurt - dt * 1.6);
+        for (const m of muzzles) m.t -= dt * 8;
+        muzzles = muzzles.filter((m) => m.t > 0);
         if (state !== 'running') {
-            for (const p of trail) p.life -= dt * 2;
-            trail = trail.filter((p) => p.life > 0);
+            for (const p of trailStack) p.life -= dt * 2;
+            for (let i = trailStack.length - 1; i >= 0; i--) {
+                if (trailStack[i].life <= 0) trailStack.splice(i, 1);
+            }
         }
         for (const s of sparks) s.life -= dt * 2.2;
         sparks = sparks.filter((s) => s.life > 0);
@@ -250,7 +393,7 @@ export function createGame(options) {
         render(now / 1000);
     }
 
-    /* ---------------- çizim ---------------- */
+    /* ---------------- çizim: arka plan ---------------- */
 
     const stars = Array.from({ length: 64 }, (_, i) => {
         const a = (i * 2654435761) % 1000;
@@ -294,7 +437,6 @@ export function createGame(options) {
             }
         }
 
-        // perspektif ızgara
         ctx.strokeStyle = 'rgba(150, 110, 220, 0.12)';
         ctx.lineWidth = 1;
         const gridOffset = (distancePx * 0.45) % 96;
@@ -313,7 +455,6 @@ export function createGame(options) {
         }
         ctx.globalAlpha = 1;
 
-        // zemin
         const ground = ctx.createLinearGradient(0, GROUND_Y, 0, CONFIG.viewH);
         ground.addColorStop(0, '#1a1130');
         ground.addColorStop(1, '#0a0614');
@@ -336,6 +477,14 @@ export function createGame(options) {
             ctx.lineTo(x - runOffset + 44, GROUND_Y + 16);
             ctx.stroke();
         }
+    }
+
+    /* ---------------- çizim: dünya ---------------- */
+
+    function drawRoundRect(x, y, w, h, r) {
+        ctx.beginPath();
+        if (ctx.roundRect) ctx.roundRect(x, y, w, h, r);
+        else ctx.rect(x, y, w, h);
     }
 
     function drawObstacles(current) {
@@ -368,6 +517,41 @@ export function createGame(options) {
         }
     }
 
+    /** Baş üstü kirişler: eğilerek geçilir. */
+    function drawCeilings(current) {
+        const distancePx = current.distance / PX;
+        for (const cl of current.ceilings) {
+            const w = cl.w / PX;
+            const bottom = GROUND_Y - cl.y / PX;
+            const x = cl.x / PX - distancePx;
+            if (x + w < -60 || x > CONFIG.viewW + 60) continue;
+            ctx.fillStyle = '#241a3d';
+            ctx.fillRect(x, 0, w, bottom);
+            ctx.fillStyle = 'rgba(248, 223, 121, 0.9)';
+            ctx.fillRect(x, bottom - 5, w, 5);
+            // tehlike çizgileri
+            ctx.save();
+            ctx.beginPath();
+            ctx.rect(x, bottom - 16, w, 11);
+            ctx.clip();
+            ctx.strokeStyle = 'rgba(248, 223, 121, 0.4)';
+            ctx.lineWidth = 4;
+            for (let sx = x - 20; sx < x + w + 20; sx += 14) {
+                ctx.beginPath();
+                ctx.moveTo(sx, bottom - 3);
+                ctx.lineTo(sx + 12, bottom - 17);
+                ctx.stroke();
+            }
+            ctx.restore();
+            ctx.strokeStyle = 'rgba(212, 173, 255, 0.25)';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(x, bottom);
+            ctx.lineTo(x + w, bottom);
+            ctx.stroke();
+        }
+    }
+
     function drawCells(current, t) {
         const distancePx = current.distance / PX;
         const half = CONFIG.cellSize / 2 / PX;
@@ -381,7 +565,7 @@ export function createGame(options) {
             ctx.translate(x, y);
             ctx.rotate(Math.PI / 4);
             ctx.shadowColor = 'rgba(99, 245, 232, 0.8)';
-            ctx.shadowBlur = 14 * pulse;
+            ctx.shadowBlur = reduced ? 0 : 14 * pulse;
             ctx.fillStyle = '#63f5e8';
             const s = half * 1.3;
             ctx.fillRect(-s / 2, -s / 2, s, s);
@@ -389,8 +573,189 @@ export function createGame(options) {
         }
     }
 
+    function drawEnemies(current, t) {
+        const distancePx = current.distance / PX;
+        for (const e of current.enemies) {
+            if (e.hp <= 0) continue;
+            const w = e.w / PX;
+            const h = e.h / PX;
+            const x = e.x / PX - distancePx;
+            if (x + w < -80 || x > CONFIG.viewW + 80) continue;
+            const ground = GROUND_Y - e.y / PX;
+            const y = ground - h;
+
+            if (e.type === 'drone') {
+                const bob = reduced ? 0 : Math.sin(t * 3 + e.x * 0.01) * 2;
+                ctx.save();
+                ctx.shadowColor = 'rgba(255, 107, 173, 0.7)';
+                ctx.shadowBlur = reduced ? 0 : 12;
+                ctx.fillStyle = '#2a1b46';
+                ctx.strokeStyle = '#ff6bad';
+                ctx.lineWidth = 2;
+                drawRoundRect(x, y + bob, w, h, 6);
+                ctx.fill();
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.moveTo(x - 3, y + bob + h / 2);
+                ctx.lineTo(x + w + 3, y + bob + h / 2);
+                ctx.stroke();
+                ctx.fillStyle = '#ff9ec9';
+                ctx.fillRect(x + w / 2 - 3, y + bob + 2, 6, 3);
+                ctx.restore();
+            } else if (e.type === 'turret') {
+                ctx.fillStyle = '#241a3d';
+                ctx.strokeStyle = '#ffa94d';
+                ctx.lineWidth = 2;
+                drawRoundRect(x, y, w, h, 4);
+                ctx.fill();
+                ctx.stroke();
+                ctx.fillStyle = '#ffa94d';
+                ctx.fillRect(x + w / 2 - 2, y - 5, 4, 7);
+                ctx.fillRect(x + w / 2 - 9, y + h * 0.45, w + 12, 4);
+                ctx.fillStyle = 'rgba(255, 169, 77, 0.8)';
+                ctx.fillRect(x + 4, y + 4, w - 8, 3);
+            } else {
+                // muhafız: gövde + vizör + bacaklar
+                ctx.fillStyle = '#221636';
+                ctx.strokeStyle = '#c9b6ff';
+                ctx.lineWidth = 2;
+                drawRoundRect(x, y, w, h * 0.72, 5);
+                ctx.fill();
+                ctx.stroke();
+                ctx.fillStyle = '#c9b6ff';
+                ctx.fillRect(x + 3, y + 3, w - 6, 4);
+                ctx.fillStyle = '#161024';
+                ctx.fillRect(x + 3, y + h * 0.72, w * 0.32, h * 0.28);
+                ctx.fillRect(x + w * 0.62, y + h * 0.72, w * 0.32, h * 0.28);
+                ctx.fillStyle = 'rgba(255, 107, 173, 0.9)';
+                ctx.fillRect(x + w - 5, y + h * 0.34, 5, 4);
+            }
+
+            // can barı
+            const hpw = Math.max(14, w);
+            const ratio = clamp(e.hp / e.maxHp, 0, 1);
+            ctx.fillStyle = 'rgba(10, 6, 20, 0.75)';
+            ctx.fillRect(x + (w - hpw) / 2, y - 10, hpw, 4);
+            ctx.fillStyle = ratio > 0.5 ? '#c5f46f' : ratio > 0.25 ? '#f8df79' : '#ff6bad';
+            ctx.fillRect(x + (w - hpw) / 2, y - 10, hpw * ratio, 4);
+        }
+    }
+
+    function drawBoss(current, t) {
+        const boss = current.boss;
+        if (!boss || boss.hp <= 0) return;
+        const distancePx = current.distance / PX;
+        const w = boss.w / PX;
+        const h = boss.h / PX;
+        const x = boss.x / PX - distancePx;
+        if (x > CONFIG.viewW + 120) return;
+        const y = GROUND_Y - h;
+        const palette = ['#ff6bad', '#ffa94d', '#63f5e8'][clamp(boss.phase - 1, 0, 2)];
+
+        ctx.save();
+        ctx.shadowColor = palette;
+        ctx.shadowBlur = reduced ? 0 : 18;
+        ctx.fillStyle = '#1b1230';
+        ctx.strokeStyle = palette;
+        ctx.lineWidth = 3;
+        drawRoundRect(x, y, w, h, 8);
+        ctx.fill();
+        ctx.stroke();
+
+        // omuz zırhları
+        ctx.fillStyle = '#2a1b46';
+        ctx.fillRect(x - 8, y + h * 0.12, w + 16, 12);
+        ctx.strokeStyle = palette;
+        ctx.lineWidth = 2;
+        ctx.strokeRect(x - 8, y + h * 0.12, w + 16, 12);
+
+        // çekirdek
+        const pulse = reduced ? 0.8 : 0.6 + 0.4 * Math.sin(t * 4);
+        ctx.beginPath();
+        ctx.arc(x + w / 2, y + h * 0.44, 11 + pulse * 2, 0, Math.PI * 2);
+        ctx.fillStyle = palette;
+        ctx.fill();
+        ctx.strokeStyle = '#0b0716';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        // faz göstergeleri (gövdedeki çentikler)
+        for (let i = 0; i < 3; i++) {
+            ctx.fillStyle = i < boss.phase ? palette : 'rgba(255,255,255,0.15)';
+            ctx.fillRect(x + 8, y + h * 0.72 + i * 7, w - 16, 4);
+        }
+
+        // göz
+        ctx.fillStyle = '#ffd9ec';
+        ctx.fillRect(x + w * 0.5 - 9, y + 14, 18, 5);
+        ctx.restore();
+    }
+
+    function drawBullets(current) {
+        const distancePx = current.distance / PX;
+        for (const b of current.bullets) {
+            const x = b.x / PX - distancePx;
+            if (x < -30 || x > CONFIG.viewW + 30) continue;
+            const y = GROUND_Y - b.y / PX;
+            if (b.own === 1) {
+                ctx.fillStyle = current.weapon === 'plasma' ? '#c9b6ff' : '#c5f46f';
+                if (!reduced) {
+                    ctx.shadowColor = current.weapon === 'plasma' ? 'rgba(201,182,255,0.9)' : 'rgba(197,244,111,0.9)';
+                    ctx.shadowBlur = 10;
+                }
+                ctx.fillRect(x - 2, y - 2, 16, 4);
+                ctx.shadowBlur = 0;
+            } else {
+                ctx.fillStyle = '#ff6bad';
+                if (!reduced) {
+                    ctx.shadowColor = 'rgba(255,107,173,0.9)';
+                    ctx.shadowBlur = 12;
+                }
+                ctx.beginPath();
+                ctx.arc(x, y, 4.5, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.shadowBlur = 0;
+            }
+        }
+    }
+
+    function drawPickups(current, t) {
+        const distancePx = current.distance / PX;
+        for (const p of current.pickups) {
+            if (p.taken !== 0) continue;
+            const x = p.x / PX - distancePx;
+            if (x < -40 || x > CONFIG.viewW + 40) continue;
+            const y = GROUND_Y - p.y / PX + (reduced ? 0 : Math.sin(t * 4 + p.x * 0.02) * 2);
+            ctx.save();
+            ctx.translate(x, y);
+            if (p.kind === 'repair') {
+                ctx.fillStyle = '#7bf1a8';
+                ctx.fillRect(-3, -9, 6, 18);
+                ctx.fillRect(-9, -3, 18, 6);
+            } else if (p.kind === 'shield') {
+                ctx.strokeStyle = '#63f5e8';
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.arc(0, 0, 8, 0, Math.PI * 2);
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.arc(0, 0, 3.5, 0, Math.PI * 2);
+                ctx.fillStyle = '#63f5e8';
+                ctx.fill();
+            } else {
+                ctx.rotate(Math.PI / 4);
+                ctx.fillStyle = '#c9b6ff';
+                ctx.fillRect(-6, -6, 12, 12);
+                ctx.strokeStyle = '#f6f1ff';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(-6, -6, 12, 12);
+            }
+            ctx.restore();
+        }
+    }
+
     function drawTrail() {
-        for (const p of trail) {
+        for (const p of trailStack) {
             ctx.globalAlpha = Math.max(0, p.life) * 0.5;
             ctx.fillStyle = visual.trail_color;
             const w = Math.max(2, 18 * p.life);
@@ -400,16 +765,22 @@ export function createGame(options) {
     }
 
     function drawPlayer(current, t) {
+        const crouched = current.crouch === 1;
+        const height = crouched ? CROUCH_H : PLAYER_H;
         const feet = GROUND_Y - (current.y || 0) / PX;
         const x = PLAYER_SCREEN_X;
-        const bodyH = PLAYER_H * 0.74;
+        const bodyH = height * 0.74;
         const airborne = current.grounded === 0;
         const bob = !airborne && (state === 'running' || state === 'idle') && !reduced ? Math.sin(t * 16) * 1.2 : 0;
-        const y = feet - PLAYER_H + bob;
+        const y = feet - height + bob;
+        const dashing = current.dashUntil > current.tick;
+        const invuln = current.invuln > 0;
 
         if (visual.trail) drawTrail();
 
         ctx.save();
+        if (dashing) ctx.globalAlpha = 0.55;
+        else if (invuln && !reduced) ctx.globalAlpha = 0.55 + 0.45 * Math.abs(Math.sin(t * 24));
         ctx.shadowColor = visual.primary;
         ctx.shadowBlur = reduced ? 6 : 16 * (0.4 + (visual.glow || 0.4));
         ctx.fillStyle = visual.primary;
@@ -425,26 +796,43 @@ export function createGame(options) {
             ctx.closePath();
             ctx.fill();
         } else {
-            ctx.beginPath();
-            if (ctx.roundRect) ctx.roundRect(x, y, PLAYER_W, bodyH, 7);
-            else ctx.rect(x, y, PLAYER_W, bodyH);
+            drawRoundRect(x, y, PLAYER_W, bodyH, 7);
             ctx.fill();
         }
         ctx.restore();
 
+        // kafa
+        const headY = crouched ? y - 2 : y - 6;
         ctx.fillStyle = visual.secondary;
         ctx.strokeStyle = visual.primary;
         ctx.lineWidth = 2;
         ctx.beginPath();
-        ctx.arc(x + PLAYER_W / 2, y - 6, 7.5, 0, Math.PI * 2);
+        ctx.arc(x + PLAYER_W / 2, headY, crouched ? 6 : 7.5, 0, Math.PI * 2);
         ctx.fill();
         ctx.stroke();
 
         ctx.fillStyle = '#ffffff';
-        ctx.fillRect(x + PLAYER_W / 2 + 1, y - 8, 4, 3);
+        ctx.fillRect(x + PLAYER_W / 2 + 1, headY - 2, 4, 3);
+
+        // kalkan halkası
+        if (current.shield === 1) {
+            ctx.strokeStyle = 'rgba(99, 245, 232, 0.85)';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(x + PLAYER_W / 2, y + bodyH / 2, PLAYER_W * 0.85, 0, Math.PI * 2);
+            ctx.stroke();
+        }
+
+        // namlu (ateş anında)
+        for (const m of muzzles) {
+            ctx.fillStyle = current.weapon === 'plasma' ? '#c9b6ff' : '#f8df79';
+            ctx.globalAlpha = clamp(m.t, 0, 1);
+            ctx.fillRect(x + PLAYER_W, y + bodyH * 0.42, 12 * m.t + 4, 3);
+            ctx.globalAlpha = 1;
+        }
 
         if (state === 'running' || state === 'countdown') {
-            const swing = reduced ? 3 : Math.sin(t * 20) * 6;
+            const swing = crouched ? 2 : (reduced ? 3 : Math.sin(t * 20) * 6);
             ctx.strokeStyle = visual.primary;
             ctx.lineWidth = 4;
             ctx.lineCap = 'round';
@@ -457,40 +845,96 @@ export function createGame(options) {
         }
     }
 
-    function drawHud(current) {
-        if (!current) return;
-        ctx.save();
+    /* ---------------- çizim: HUD ---------------- */
+
+    function panel(x, y, w, h) {
         ctx.fillStyle = 'rgba(10, 6, 20, 0.55)';
         ctx.strokeStyle = 'rgba(220, 204, 255, 0.16)';
         ctx.lineWidth = 1;
-        const panel = (x, y, w, h) => {
-            ctx.beginPath();
-            if (ctx.roundRect) ctx.roundRect(x, y, w, h, 12);
-            else ctx.rect(x, y, w, h);
-            ctx.fill();
-            ctx.stroke();
-        };
-        panel(20, 18, 210, 62);
-        panel(CONFIG.viewW - 232, 18, 212, 62);
+        drawRoundRect(x, y, w, h, 12);
+        ctx.fill();
+        ctx.stroke();
+    }
 
-        ctx.fillStyle = '#bdb3cb';
+    function drawHud(current) {
+        if (!current) return;
+        const score = scoreFor(current.distance, current.cells, current.kills, current.bossKilled === 1);
+        ctx.save();
         ctx.textAlign = 'left';
+
+        // sol panel: skor + can + silah
+        panel(20, 18, 268, 94);
+        ctx.fillStyle = '#bdb3cb';
         ctx.font = '600 12px "Instrument Sans", system-ui, sans-serif';
         ctx.fillText('SKOR', 36, 40);
         ctx.fillStyle = '#f6f1ff';
         ctx.font = '800 26px "Bricolage Grotesque", system-ui, sans-serif';
-        ctx.fillText(String(scoreFor(current.distance, current.cells)), 36, 68);
+        ctx.fillText(String(score), 36, 66);
 
+        // can barı
+        const hpX = 36;
+        const hpY = 78;
+        const hpW = 150;
+        const ratio = clamp(current.hp / CONFIG.maxHp, 0, 1);
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.12)';
+        ctx.fillRect(hpX, hpY, hpW, 8);
+        ctx.fillStyle = ratio > 0.5 ? '#c5f46f' : ratio > 0.25 ? '#f8df79' : '#ff6bad';
+        ctx.fillRect(hpX, hpY, hpW * ratio, 8);
+        ctx.fillStyle = '#bdb3cb';
+        ctx.font = '700 11px "Instrument Sans", system-ui, sans-serif';
+        ctx.fillText('CAN ' + current.hp, hpX + hpW + 8, hpY + 8);
+
+        // silah + şarj
+        const weapon = WEAPONS[current.weapon] || WEAPONS.blaster;
+        ctx.fillStyle = current.weapon === 'plasma' ? '#c9b6ff' : '#c5f46f';
+        ctx.font = '700 11px "Instrument Sans", system-ui, sans-serif';
+        ctx.fillText(WEAPON_LABEL[current.weapon] || 'BLASTER', 36, 102);
+        for (let i = 0; i < weapon.mag; i++) {
+            ctx.fillStyle = i < current.shots ? (current.weapon === 'plasma' ? '#c9b6ff' : '#c5f46f') : 'rgba(255,255,255,0.16)';
+            ctx.fillRect(120 + i * 9, 94, 6, 8);
+        }
+
+        // sağ panel: süre + hücre + öldürme
+        panel(CONFIG.viewW - 250, 18, 230, 94);
         ctx.fillStyle = '#bdb3cb';
         ctx.font = '600 12px "Instrument Sans", system-ui, sans-serif';
-        ctx.fillText('SÜRE', CONFIG.viewW - 216, 40);
+        ctx.fillText('SÜRE', CONFIG.viewW - 234, 40);
         ctx.fillStyle = '#f6f1ff';
         ctx.font = '800 22px "Bricolage Grotesque", system-ui, sans-serif';
-        ctx.fillText((current.tick / CONFIG.tickHz).toFixed(1) + 's', CONFIG.viewW - 216, 68);
-
+        ctx.fillText((current.tick / CONFIG.tickHz).toFixed(1) + 's', CONFIG.viewW - 234, 66);
         ctx.fillStyle = '#63f5e8';
         ctx.font = '700 13px "Instrument Sans", system-ui, sans-serif';
-        ctx.fillText('◈ ' + current.cells, CONFIG.viewW - 96, 68);
+        ctx.fillText('◈ ' + current.cells, CONFIG.viewW - 140, 66);
+        ctx.fillStyle = '#ff9ec9';
+        ctx.fillText('✖ ' + current.kills, CONFIG.viewW - 78, 66);
+
+        // dash durumu
+        const dashReady = current.tick >= current.dashReadyAt;
+        ctx.fillStyle = dashReady ? '#c5f46f' : 'rgba(189, 179, 203, 0.55)';
+        ctx.font = '700 11px "Instrument Sans", system-ui, sans-serif';
+        ctx.fillText(dashReady ? 'DASH HAZIR' : 'DASH ' + Math.ceil((current.dashReadyAt - current.tick) / 60) + 's', CONFIG.viewW - 234, 96);
+
+        // boss barı
+        const boss = current.boss;
+        if (boss && boss.hp > 0) {
+            const bw = 420;
+            const bx = (CONFIG.viewW - bw) / 2;
+            const by = 150;
+            panel(bx - 12, by - 22, bw + 24, 52);
+            ctx.fillStyle = '#bdb3cb';
+            ctx.font = '700 11px "Instrument Sans", system-ui, sans-serif';
+            ctx.fillText('ÇEKİRDEK MUHAFIZI · FAZ ' + boss.phase, bx, by - 6);
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.12)';
+            ctx.fillRect(bx, by, bw, 10);
+            const br = clamp(boss.hp / boss.maxHp, 0, 1);
+            ctx.fillStyle = ['#ff6bad', '#ffa94d', '#63f5e8'][clamp(boss.phase - 1, 0, 2)];
+            ctx.fillRect(bx, by, bw * br, 10);
+            // faz eşikleri
+            ctx.fillStyle = 'rgba(10, 6, 20, 0.75)';
+            ctx.fillRect(bx + bw * (CONFIG.bossPhase2 / 100) - 1, by, 2, 10);
+            ctx.fillRect(bx + bw * (CONFIG.bossPhase3 / 100) - 1, by, 2, 10);
+        }
+
         ctx.restore();
     }
 
@@ -509,9 +953,14 @@ export function createGame(options) {
         drawBackground(distancePx, t);
 
         if (current) {
+            drawCeilings(current);
             drawObstacles(current);
             drawCells(current, t);
+            drawPickups(current, t);
+            drawEnemies(current, t);
+            drawBoss(current, t);
             drawPlayer(current, t);
+            drawBullets(current);
             for (const s of sparks) {
                 ctx.globalAlpha = Math.max(0, s.life);
                 ctx.fillStyle = '#63f5e8';
@@ -520,9 +969,13 @@ export function createGame(options) {
                 ctx.fill();
             }
             ctx.globalAlpha = 1;
+            if (hurt > 0 && !reduced) {
+                ctx.fillStyle = 'rgba(255, 60, 110, ' + hurt * 0.18 + ')';
+                ctx.fillRect(0, 0, CONFIG.viewW, CONFIG.viewH);
+            }
             drawHud(current);
         } else {
-            drawPlayer({ y: 0, grounded: 1 }, t);
+            drawPlayer({ y: 0, grounded: 1, crouch: 0, tick: 0, dashUntil: 0, invuln: 0, shield: 0, weapon: 'blaster' }, t);
             ctx.textAlign = 'center';
             ctx.fillStyle = 'rgba(246, 241, 255, 0.6)';
             ctx.font = '600 17px "Instrument Sans", system-ui, sans-serif';
@@ -539,35 +992,87 @@ export function createGame(options) {
 
     /* ---------------- girdi ---------------- */
 
-    function isPlayKey(code) {
-        return code === 'Space' || code === 'ArrowUp' || code === 'KeyW';
+    const JUMP_KEYS = ['Space', 'ArrowUp', 'KeyW'];
+    const CROUCH_KEYS = ['ArrowDown', 'KeyS'];
+    const FIRE_KEYS = ['KeyJ', 'KeyF', 'KeyX'];
+    const DASH_KEYS = ['ShiftLeft', 'ShiftRight', 'KeyK'];
+
+    function typingInForm() {
+        const tag = (document.activeElement && document.activeElement.tagName) || '';
+        return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
     }
 
     function onKeyDown(event) {
-        if (event.repeat || !isPlayKey(event.code)) return;
-        // Form alanlarında oyun tuşlarını yutmayalım.
-        const tag = (document.activeElement && document.activeElement.tagName) || '';
-        if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
-        if (state === 'running') event.preventDefault();
-        requestAction(ACTIONS.JUMP);
+        if (event.repeat || typingInForm()) return;
+        const code = event.code;
+        if (JUMP_KEYS.includes(code)) {
+            if (state === 'running') event.preventDefault();
+            requestAction(ACTIONS.JUMP);
+        } else if (CROUCH_KEYS.includes(code)) {
+            if (state === 'running') {
+                event.preventDefault();
+                setHold('crouch', true);
+            }
+        } else if (FIRE_KEYS.includes(code)) {
+            if (state === 'running') {
+                event.preventDefault();
+                setHold('fire', true);
+            }
+        } else if (DASH_KEYS.includes(code)) {
+            if (state === 'running') {
+                event.preventDefault();
+                requestAction(ACTIONS.DASH);
+            }
+        }
     }
 
     function onKeyUp(event) {
-        if (!isPlayKey(event.code)) return;
-        if (state === 'running') event.preventDefault();
-        requestAction(ACTIONS.RELEASE);
+        const code = event.code;
+        if (JUMP_KEYS.includes(code)) {
+            if (state === 'running') event.preventDefault();
+            requestAction(ACTIONS.RELEASE);
+        } else if (CROUCH_KEYS.includes(code)) {
+            if (state === 'running') {
+                event.preventDefault();
+                setHold('crouch', false);
+            }
+        } else if (FIRE_KEYS.includes(code)) {
+            if (state === 'running') {
+                event.preventDefault();
+                setHold('fire', false);
+            }
+        }
+    }
+
+    /** Dokunma bölgeleri: sol %34 eğil, sağ %34 zıpla, orta ateş. */
+    function zoneAt(event) {
+        const rect = canvas.getBoundingClientRect ? canvas.getBoundingClientRect() : null;
+        const width = (rect && rect.width) || CONFIG.viewW;
+        const px = typeof event.clientX === 'number' && rect ? event.clientX - rect.left : width / 2;
+        const ratio = width > 0 ? px / width : 0.5;
+        if (ratio < 0.34) return 'crouch';
+        if (ratio > 0.66) return 'jump';
+        return 'fire';
     }
 
     function onPointerDown(event) {
         if (state !== 'running') return;
         event.preventDefault();
-        canvas.setPointerCapture && canvas.setPointerCapture(event.pointerId);
-        requestAction(ACTIONS.JUMP);
+        const zone = zoneAt(event);
+        if (event.pointerId != null) touches.set(event.pointerId, zone);
+        if (canvas.setPointerCapture && event.pointerId != null) canvas.setPointerCapture(event.pointerId);
+        if (zone === 'jump') requestAction(ACTIONS.JUMP);
+        else if (zone === 'crouch') setHold('crouch', true);
+        else setHold('fire', true);
     }
 
     function onPointerUp(event) {
+        if (event.pointerId != null) touches.delete(event.pointerId);
         if (state !== 'running') return;
-        requestAction(ACTIONS.RELEASE);
+        const zone = zoneAt(event);
+        if (zone === 'jump') requestAction(ACTIONS.RELEASE);
+        else if (zone === 'crouch') setHold('crouch', false);
+        else setHold('fire', false);
     }
 
     window.addEventListener('keydown', onKeyDown, { passive: false });
@@ -583,16 +1088,19 @@ export function createGame(options) {
     return {
         start,
         requestAction,
+        setHold,
         abort() {
             if (state === 'running' || state === 'countdown' || state === 'paused') {
-                queued.length = 0;
                 inputs = [];
                 run = null;
+                resetIntent();
                 setState('idle');
             }
         },
         pause() {
             if (state === 'running') {
+                setHold('fire', false);
+                setHold('crouch', false);
                 setState('paused');
             }
         },
@@ -603,9 +1111,9 @@ export function createGame(options) {
             }
         },
         reset() {
-            queued.length = 0;
             inputs = [];
             run = null;
+            resetIntent();
             setState('idle');
         },
         setVisual(next) {
@@ -628,6 +1136,9 @@ export function createGame(options) {
         },
         getMeta() {
             return meta;
+        },
+        getInputs() {
+            return inputs.slice();
         },
         destroy() {
             cancelAnimationFrame(raf);

@@ -174,6 +174,15 @@ Object.defineProperty(globalThis, 'navigator', { value: window.navigator, config
 Object.defineProperty(window, 'performance', { value: { now: () => rafTime }, configurable: true });
 globalThis.performance = window.performance;
 
+/** Koşul sağlanana kadar kare ilerletir (tur 3 dakikaya kadar sürebilir). */
+function pumpUntil(predicate, maxFrames = 12000) {
+    for (let i = 0; i < maxFrames; i += 1) {
+        if (predicate()) return true;
+        pump(1);
+    }
+    return predicate();
+}
+
 function pump(frames = 1, stepMs = 1000 / 60) {
     for (let i = 0; i < frames; i += 1) {
         rafTime += stepMs;
@@ -206,6 +215,19 @@ check('cüzdan notu giriş istiyor', text('#mg-cap-text').toLowerCase().includes
 
 const shopItems = document.querySelectorAll('#mg-shop-grid .mg-item');
 check('mağazada 12 kozmetik', shopItems.length === 12, String(shopItems.length));
+
+// v2 kontrol düğmeleri
+const padIds = ['mg-jump', 'mg-crouch', 'mg-fire', 'mg-dash'];
+check('dört kontrol düğmesi var', padIds.every((id) => !!$('#' + id)), padIds.map((id) => !!$('#' + id)).join(','));
+check('kontroller başlangıçta kapalı', padIds.every((id) => $('#' + id).disabled === true));
+check('eğil düğmesi etiketli', ($('#mg-crouch').getAttribute('aria-label') || '').includes('Eğil'));
+check('ateş düğmesi etiketli', ($('#mg-fire').getAttribute('aria-label') || '').includes('Ateş'));
+check('dash düğmesi etiketli', ($('#mg-dash').getAttribute('aria-label') || '').includes('Dash'));
+check('tuval etiketi eğilmeyi anlatıyor',
+    ($('#mg-canvas').getAttribute('aria-label') || '').toLowerCase().includes('eğil'),
+    ($('#mg-canvas').getAttribute('aria-label') || '').slice(0, 60));
+check('kurallar boss fazını anlatıyor', text('#mg-rules-title') !== '' && (document.querySelector('.mg-rules') || { textContent: '' }).textContent.includes('Boss'));
+check('sonuç ekranı düğmeleri sonradan açılır', $('#mg-fire').disabled === true);
 check('mağaza notu (kapalı/örnek)', !$('#mg-shop-note').hidden, 'not gizli');
 check('mağaza kartlarında tuval var', document.querySelectorAll('#mg-shop-grid canvas').length === 12);
 
@@ -246,15 +268,23 @@ check('sahne canlı sınıfı', $('#mg-stage').classList.contains('is-live'));
 // 3 saniyelik geri sayım + 3 saniyelik oyun
 pump(190);
 check('geri sayım bitti', $('#mg-jump').disabled === false);
+check('eğil/ateş/dash oyun sırasında açık', ['mg-crouch', 'mg-fire', 'mg-dash'].every((id) => $('#' + id).disabled === false));
 check('overlay gizlendi', $('#mg-overlay').hidden === true);
 
 window.dispatchEvent(new window.KeyboardEvent('keydown', { code: 'Space', key: ' ' }));
-pump(170);
+pump(40);
 window.dispatchEvent(new window.KeyboardEvent('keyup', { code: 'Space', key: ' ' }));
+// Ateş düğmesi basılı tutulunca mermi üretmeli (motor içinde doğrulanır).
+const fire = $('#mg-fire');
+fire.dispatchEvent(new window.MouseEvent('pointerdown', { bubbles: true }));
+pump(40);
+fire.dispatchEvent(new window.MouseEvent('pointerup', { bubbles: true }));
+check('ateş düğmesi aria-pressed bırakıldı', fire.getAttribute('aria-pressed') !== 'true');
+pump(130);
 
-// Çarpışma sonrası sonuç ekranı
-pump(300);
-check('tur bitti (sonuç göründü)', $('#mg-overlay').hidden === false && text('#mg-overlay-card').includes('Antrenman tamamlandı'), text('#mg-overlay-card').slice(0, 80));
+// Tur can bitişi veya 180 sn sınırıyla biter → sonuç ekranı
+const finished = pumpUntil(() => $('#mg-overlay').hidden === false, 13000);
+check('tur bitti (sonuç göründü)', finished && text('#mg-overlay-card').includes('Antrenman tamamlandı'), text('#mg-overlay-card').slice(0, 80));
 check('sonuç skor alanı', text('#mg-overlay-card').includes('Skor'), text('#mg-overlay-card').slice(0, 120));
 check('tekrar oyna düğmesi', [...document.querySelectorAll('#mg-overlay-card button')].some((b) => b.textContent.includes('Tekrar')));
 

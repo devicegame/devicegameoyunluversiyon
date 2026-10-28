@@ -348,6 +348,20 @@ admin_head('Mini Oyun');
   </div>
 
   <div class="dg-card" style="padding:16px;margin-top:16px">
+    <h2 style="font-size:15px;margin-bottom:8px">Motor (salt okunur)</h2>
+    <p class="dg-muted" style="font-size:13px;line-height:1.8">
+      Sürüm <b><?php echo e(MG_ENGINE_VERSION); ?></b> · <?php echo (int)mg_engine_config()['tickHz']; ?> tick/sn
+      · üst sınır <b><?php echo (int)mg_engine_config()['maxTicks']; ?> tick</b> (<?php echo (int)round(mg_engine_config()['maxTicks'] / mg_engine_config()['tickHz']); ?> sn)
+      · can <b><?php echo (int)mg_engine_config()['maxHp']; ?></b>
+      · boss <b><?php echo (int)mg_engine_config()['bossHp']; ?> HP</b> / <?php echo (int)mg_engine_config()['bossStartTick']; ?>. tick<br>
+      <span style="font-size:12px">
+        Bu değerler sunucu yeniden oynatmasıyla birebir eşleştiği için panelden değiştirilemez.
+        Savaş/ekonomi dengesi değişecekse motor sürümü artırılmalı ve eski skorlar ayrı tutulmalıdır.
+      </span>
+    </p>
+  </div>
+
+  <div class="dg-card" style="padding:16px;margin-top:16px">
     <h2 style="font-size:15px;margin-bottom:8px">Hızlı kontrol</h2>
     <p class="dg-muted" style="font-size:13px;line-height:1.7">
       Ödülleri kapatmak oyunu kapatmaz. Mağazayı kapatmak sahiplikleri silmez. Sezon yalnızca yönetici
@@ -515,7 +529,13 @@ admin_head('Mini Oyun');
       <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap">
         <div style="font-size:13px;line-height:1.7">
           <b><?php echo e($run['username']); ?></b> · skor <b><?php echo number_format($run['score']); ?></b>
-          · <?php echo number_format($run['ticks']); ?> tick · <?php echo (int)$run['cells']; ?> hücre<br>
+          · <?php echo number_format($run['ticks']); ?> tick · <?php echo (int)$run['cells']; ?> hücre
+          · <?php echo (int)$run['kills']; ?> düşman
+          · boss <?php echo $run['boss_killed'] ? 'devrildi' : 'hayır'; ?>
+          · can <?php echo (int)$run['hp']; ?>
+          · hasar <?php echo (int)$run['damage_taken']; ?>
+          · <?php echo (int)$run['inputs_count']; ?> girdi
+          · motor <?php echo e($run['version']); ?><br>
           <span class="dg-muted" style="font-size:12px">
             <?php echo e($run['submitted_utc']); ?> · risk <?php echo (int)$run['risk']; ?>
             · girdi <?php echo e(substr($run['input_hash'], 0, 12)); ?>

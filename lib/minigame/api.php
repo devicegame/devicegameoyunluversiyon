@@ -119,5 +119,13 @@ function mg_api_result_payload(array $result): array
         'cells_seen' => (int)($result['cellsSeen'] ?? 0),
         'distance' => (int)($result['distance'] ?? 0),
         'reason' => (string)($result['reason'] ?? ''),
+        // v2 savaş özeti (yalnızca oyuncunun kendi turu; gizli bilgi yok).
+        'kills' => (int)($result['kills'] ?? 0),
+        'boss_killed' => !empty($result['bossKilled']),
+        'boss_max_hp' => (int)($result['bossMaxHp'] ?? 0),
+        'boss_hp_left' => (int)($result['bossHpLeft'] ?? 0),
+        'damage_taken' => (int)($result['damageTaken'] ?? 0),
+        'hp' => (int)($result['hp'] ?? 0),
+        'shots_fired' => (int)($result['shotsFired'] ?? 0),
     ];
 }

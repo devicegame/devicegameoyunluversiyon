@@ -11,6 +11,7 @@ import { spawn } from 'node:child_process';
 import { setTimeout as sleep } from 'node:timers/promises';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
+import { simulate, CONFIG } from '../assets/js/minigame/engine.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.env.PORT || 8123);
@@ -160,7 +161,11 @@ try {
     const boot = JSON.parse(page.text.match(/id="mg-bootstrap"[^>]*>([\s\S]*?)<\/script>/)[1]);
     check('oturum kullanıcısı', boot.state.user && boot.state.user.username === 'oyuncu1');
     check('cüzdan bilgisi geldi', typeof boot.state.wallet.balance === 'number');
-    check('günlük görevler geldi', Array.isArray(boot.state.wallet.tasks) && boot.state.wallet.tasks.length === 4);
+    check('günlük görevler geldi', Array.isArray(boot.state.wallet.tasks) && boot.state.wallet.tasks.length === 6, String((boot.state.wallet.tasks || []).length));
+    check('görevlerde boss hedefi var', (boot.state.wallet.tasks || []).some((task) => task.metric === 'boss_kills'));
+    check('motor sürümü v2', boot.state.engine.version === 'v2', boot.state.engine.version);
+    check('tur üst sınırı 180 sn', boot.state.engine.maxTicks === 10800, String(boot.state.engine.maxTicks));
+    check('girdi sınırı 3000', boot.state.max_inputs === 3000, String(boot.state.max_inputs));
     check('ekonomi onayı etiketli', boot.state.wallet.economy_approved === false);
     check('CSRF var', typeof boot.csrf === 'string' && boot.csrf.length > 10);
 
@@ -179,24 +184,42 @@ try {
     check('seed döndü', Number.isInteger(start.data.seed));
     check('token döndü', typeof start.data.token === 'string' && start.data.token.length === 64);
     check('deneme sayacı', start.data.attempts >= 1);
+    check('koşu v2 sürümü', start.data.version === 'v2', String(start.data.version));
+    check('koşu 180 sn sınırı', start.data.max_ticks === CONFIG.maxTicks, String(start.data.max_ticks));
+    check('koşu yapılandırması geldi', !!start.data.config && start.data.config.maxHp === 100);
 
-    // Tur, boş girdiyle ~0.7 sn sürer; süre doğrulaması için bekle.
-    await sleep(2000);
+    // v2 aksiyonları (eğil/kalk/ateş/dash/zıpla) sunucudan geçmeli. Tur,
+    // girdiler bittikten sonra can bitene kadar (ya da 180 sn) sürer; süre
+    // doğrulaması için gerçek tick süresi kadar beklenir.
+    const inputs = [[5, 4], [40, 5], [60, 3], [70, 3], [90, 6], [120, 1], [128, 2], [150, 3], [200, 4], [260, 5]];
+    const expected = simulate(start.data.seed, inputs);
+    const waitMs = Math.ceil((expected.ticks / CONFIG.tickHz) * 1000) + 1200;
+    console.log(`[test] tur ${expected.ticks} tick (${(expected.ticks / 60).toFixed(1)} sn) → ${(waitMs / 1000).toFixed(1)} sn bekleniyor…`);
+    await sleep(waitMs);
+
     const submit = await jsonRequest('/api/minigame/submit.php', {
         csrf: boot.csrf,
         run_id: start.data.run_id,
         token: start.data.token,
-        inputs: [],
+        inputs,
     });
-    check('boş tur doğrulandı', submit.status === 200 && submit.data.ok === true, JSON.stringify(submit.data).slice(0, 200));
+    check('v2 turu doğrulandı', submit.status === 200 && submit.data.ok === true, JSON.stringify(submit.data).slice(0, 200));
     check('sonuç sunucudan', submit.data.result && submit.data.result.score > 0, JSON.stringify(submit.data.result));
-    check('kısa tur tabloya sayılmaz', submit.data.counts === false);
+    check('sunucu skoru istemci motoruyla aynı', submit.data.result && submit.data.result.score === expected.score, `${submit.data.result && submit.data.result.score} ≠ ${expected.score}`);
+    check('sunucu tick sayısı aynı', submit.data.result && submit.data.result.ticks === expected.ticks, `${submit.data.result && submit.data.result.ticks} ≠ ${expected.ticks}`);
+    check(
+        'v2 sonuç alanları',
+        !!submit.data.result && Number.isInteger(submit.data.result.kills) && Number.isInteger(submit.data.result.hp)
+            && typeof submit.data.result.boss_killed === 'boolean' && Number.isInteger(submit.data.result.damage_taken),
+        JSON.stringify(submit.data.result).slice(0, 200)
+    );
+    check('kısa tur kuralı (min ticks)', submit.data.counts === (expected.ticks >= 600), `ticks=${expected.ticks} counts=${submit.data.counts}`);
 
     const again = await jsonRequest('/api/minigame/submit.php', {
         csrf: boot.csrf,
         run_id: start.data.run_id,
         token: start.data.token,
-        inputs: [],
+        inputs,
     });
     check('tekrar gönderim idempotent', again.status === 200 && again.data.duplicate === true, JSON.stringify(again.data).slice(0, 200));
 
