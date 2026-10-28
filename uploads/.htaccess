@@ -1,0 +1,11 @@
+# DeviceGame uploads koruma
+# Dizin listelemeyi index.html engeller; PHP calistirma asagidaki kuralla kapatilir.
+
+<FilesMatch "\.(php|phtml|phar|php[3457])$">
+  <IfModule mod_authz_core.c>
+    Require all denied
+  </IfModule>
+  <IfModule !mod_authz_core.c>
+    Deny from all
+  </IfModule>
+</FilesMatch>

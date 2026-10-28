@@ -1,0 +1,18 @@
+User-agent: *
+Allow: /
+
+Disallow: /admin/
+Disallow: /api/
+Disallow: /storage/
+Disallow: /auth.php
+Disallow: /login.php
+Disallow: /register.php
+Disallow: /cart.php
+Disallow: /checkout.php
+Disallow: /diagnose.php
+Disallow: /sosyal/aksiyon.php
+Disallow: /sosyal/bildirimler.php
+Disallow: /sosyal/yeni.php
+Disallow: /sosyal/mesajlar.php
+
+Sitemap: https://devicegame.com/sitemap.php

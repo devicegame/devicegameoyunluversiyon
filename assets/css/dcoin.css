@@ -1,0 +1,389 @@
+/* =========================================================
+   DEVICE GAME — D-Coin katmanı
+   Eski premium temanın Pine / Bone / Signal paleti ve
+   Bricolage Grotesque + Instrument Sans tipografisiyle aynıdır.
+   ========================================================= */
+
+.dcoin-page section[id],
+.auth-page section[id] { scroll-margin-top: 7rem; }
+
+.dcoin-flash-stack {
+    position: fixed; left: 50%; bottom: 1.25rem; z-index: 180;
+    display: grid; gap: 0.6rem; width: min(92vw, 34rem);
+    transform: translateX(-50%); pointer-events: none;
+}
+.dcoin-flash {
+    display: flex; align-items: center; gap: 0.65rem;
+    padding: 0.85rem 1.1rem; border-radius: 999px;
+    background: var(--bone); color: var(--pine);
+    box-shadow: 0 22px 45px -20px rgba(0, 0, 0, 0.85);
+    font-size: 0.92rem; font-weight: 600; text-align: center;
+    opacity: 0; transform: translateY(12px);
+    transition: opacity 0.35s var(--ease), transform 0.35s var(--ease);
+}
+.dcoin-flash.show { opacity: 1; transform: none; }
+.dcoin-flash.is-error { background: #F3B7A7; }
+
+.dcoin-alert {
+    max-width: var(--wrap); margin: 1.5rem auto 0;
+    padding: 1rem 1.25rem; border: 1px solid rgba(244, 193, 93, 0.4);
+    border-radius: 16px; background: rgba(244, 193, 93, 0.08);
+    color: var(--bone); font-size: 0.94rem;
+}
+.dcoin-alert a { color: var(--signal); text-decoration: underline; }
+
+/* ---------- Mağaza kartına D-Coin satırı ---------- */
+.dcoin-card .p-sub { min-height: 2.55em; }
+.dcoin-buy-row {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 0.75rem; flex-wrap: wrap;
+    padding-top: 0.9rem; margin-top: 0.9rem;
+    border-top: 1px solid var(--line);
+}
+.dcoin-price-wrap { display: flex; flex-direction: column; gap: 0.1rem; }
+.dcoin-price {
+    color: var(--signal); font-family: var(--font-display);
+    font-size: 1.02rem; font-weight: 700; letter-spacing: -0.02em;
+    font-variant-numeric: tabular-nums;
+}
+.dcoin-stock { color: var(--mist); font-size: 0.76rem; }
+.dcoin-stock.is-low { color: var(--amber); }
+.dcoin-stock.is-empty { color: var(--coral); }
+.dcoin-actions { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+.dcoin-buy,
+.dcoin-cash {
+    width: auto !important; min-height: 2.55rem;
+    padding: 0.62rem 1rem; font-size: 0.86rem; white-space: nowrap;
+}
+.dcoin-buy:disabled,
+.dcoin-cash:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
+.dcoin-unavailable { color: var(--mist); font-size: 0.84rem; }
+.dcoin-buy-row.is-spotlight { width: 100%; margin-top: 0.25rem; }
+
+/* Ürün detayında D-Coin ödeme paneli */
+.pdp-dcoin-price {
+    display: inline-flex; align-items: center; gap: 0.35rem;
+    padding: 0.42rem 0.75rem; border: 1px solid rgba(79, 224, 160, 0.35);
+    border-radius: 999px; background: rgba(79, 224, 160, 0.08);
+    color: var(--mist); font-size: 0.86rem; white-space: nowrap;
+}
+.pdp-dcoin-price b { color: var(--signal); font-variant-numeric: tabular-nums; }
+.dcoin-detail-panel {
+    margin: 0 0 1.25rem; padding: clamp(1rem, 2.5vw, 1.35rem);
+    border: 1px solid rgba(79, 224, 160, 0.32); border-radius: 20px;
+    background:
+        radial-gradient(420px 220px at 100% 0%, rgba(79, 224, 160, 0.13), transparent 70%),
+        linear-gradient(180deg, rgba(24, 55, 43, 0.72), rgba(14, 36, 28, 0.72));
+}
+.dcoin-detail-panel.is-unavailable { border-color: var(--line); background: rgba(17, 42, 33, 0.45); }
+.dcoin-detail-copy .eyebrow { margin-bottom: 0.55rem; }
+.dcoin-detail-title {
+    display: block; font-family: var(--font-display);
+    font-size: clamp(1.35rem, 2.4vw, 1.8rem); line-height: 1.05; letter-spacing: -0.03em;
+}
+.dcoin-detail-copy p:last-child { color: var(--mist); font-size: 0.92rem; margin-top: 0.55rem; max-width: 62ch; }
+.dcoin-detail-action {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 1rem; flex-wrap: wrap; margin-top: 1.1rem; padding-top: 1rem;
+    border-top: 1px solid rgba(190, 225, 208, 0.14);
+}
+.dcoin-detail-panel .dcoin-price { font-size: 1.35rem; }
+.dcoin-detail-panel .dcoin-buy { min-height: 3.05rem; padding: 0.8rem 1.35rem; font-size: 0.94rem; }
+.mobile-dcoin-price { color: var(--signal); font-size: 0.76rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+.dcoin-mobile-action { display: inline-flex; margin-left: auto; }
+.dcoin-mobile-action .btn { min-height: 2.65rem; padding: 0.68rem 0.85rem !important; font-size: 0.82rem !important; }
+.mobile-bar .dcoin-mobile-action + .btn { margin-left: 0; }
+
+.store-tools {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 1rem; flex-wrap: wrap; margin-bottom: 1.5rem;
+}
+.store-tools .search-box { flex: 1 1 320px; max-width: 520px; }
+.store-count { color: var(--mist); font-size: 0.9rem; }
+.store-count strong { color: var(--bone); }
+
+/* ---------- D-Coin / video bölümü ---------- */
+.dcoin-section {
+    border-block: 1px solid var(--line);
+    background:
+        radial-gradient(760px 420px at 92% 0%, rgba(79, 224, 160, 0.09), transparent 70%),
+        rgba(17, 42, 33, 0.38);
+}
+.dcoin-layout {
+    display: grid; grid-template-columns: minmax(0, 1.65fr) minmax(300px, 0.85fr);
+    gap: 1.25rem; align-items: start;
+}
+.dcoin-panel {
+    background: linear-gradient(180deg, var(--card) 0%, rgba(14, 36, 28, 0.72) 100%);
+    border: 1px solid var(--line); border-radius: var(--radius);
+    overflow: hidden;
+}
+.dcoin-player { position: relative; background: #020A07; overflow: hidden; }
+.dcoin-player video {
+    display: block; width: 100%; aspect-ratio: 16 / 9;
+    background: #020A07; object-fit: contain;
+}
+.dcoin-play-overlay {
+    position: absolute; inset: 0; display: grid; place-items: center;
+    background: linear-gradient(180deg, rgba(2, 10, 7, 0.05), rgba(2, 10, 7, 0.55));
+}
+.dcoin-play-overlay[hidden] { display: none; }
+.dcoin-play-btn {
+    width: 76px; height: 76px; border: 1px solid rgba(232, 235, 228, 0.65);
+    border-radius: 50%; display: grid; place-items: center;
+    background: var(--signal); color: var(--pine); cursor: pointer;
+    box-shadow: 0 22px 45px -18px rgba(0, 0, 0, 0.9);
+    transition: transform 0.25s var(--ease), background 0.25s;
+}
+.dcoin-play-btn:hover { transform: translateY(-2px); background: var(--bone); }
+.dcoin-seek-guard {
+    position: absolute; top: 1rem; left: 50%; z-index: 3;
+    transform: translate(-50%, -8px);
+    padding: 0.55rem 0.9rem; border-radius: 999px;
+    background: #F3B7A7; color: var(--pine);
+    font-size: 0.8rem; font-weight: 700; white-space: nowrap;
+    opacity: 0; pointer-events: none; transition: opacity 0.25s, transform 0.25s;
+}
+.dcoin-seek-guard.show { opacity: 1; transform: translate(-50%, 0); }
+.dcoin-player-bar {
+    display: flex; align-items: center; gap: 0.9rem;
+    padding: 0.9rem 1rem; background: rgba(14, 36, 28, 0.96);
+    border-top: 1px solid var(--line);
+}
+.dcoin-progress {
+    flex: 1; height: 6px; overflow: hidden; border-radius: 999px;
+    background: rgba(190, 225, 208, 0.14);
+}
+.dcoin-progress-fill {
+    width: 0%; height: 100%; border-radius: inherit;
+    background: var(--signal); transition: width 0.2s linear;
+}
+.dcoin-time { color: var(--mist); font-size: 0.82rem; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.dcoin-reward-chip {
+    padding: 0.38rem 0.7rem; border-radius: 999px;
+    background: var(--bone); color: var(--pine);
+    font-size: 0.78rem; font-weight: 700; white-space: nowrap;
+}
+.dcoin-controls {
+    display: flex; align-items: center; gap: 0.65rem; flex-wrap: wrap;
+    padding: 0.9rem 1rem; border-top: 1px solid var(--line);
+}
+.dcoin-control-btn {
+    width: auto !important; padding: 0.58rem 0.95rem; font-size: 0.86rem;
+}
+.dcoin-status { color: var(--mist); font-size: 0.88rem; margin-left: auto; text-align: right; }
+.dcoin-watch-result { padding: 0 1rem 1rem; }
+.dcoin-result-card {
+    display: flex; align-items: center; gap: 0.9rem;
+    padding: 1rem; border: 1px solid rgba(79, 224, 160, 0.35);
+    border-radius: 16px; background: rgba(79, 224, 160, 0.08);
+}
+.dcoin-result-card.is-error { border-color: rgba(255, 138, 107, 0.4); background: rgba(255, 138, 107, 0.08); }
+.dcoin-result-card b { color: var(--signal); }
+.dcoin-result-card.is-error b { color: var(--coral); }
+.dcoin-result-card p { color: var(--mist); font-size: 0.88rem; }
+.dcoin-result-card a { color: var(--signal); text-decoration: underline; }
+.dcoin-player-notes {
+    display: flex; flex-wrap: wrap; gap: 0.5rem;
+    padding: 0 1rem 1rem;
+}
+.dcoin-chip {
+    display: inline-flex; align-items: center; gap: 0.4rem;
+    padding: 0.42rem 0.72rem; border: 1px solid var(--line); border-radius: 999px;
+    color: var(--mist); font-size: 0.78rem; background: rgba(190, 225, 208, 0.05);
+}
+.dcoin-chip strong { color: var(--bone); font-weight: 600; }
+
+.dcoin-side { display: grid; gap: 1.25rem; }
+.dcoin-account { padding: 1.25rem; }
+.dcoin-account-top { display: flex; justify-content: space-between; gap: 1rem; align-items: flex-start; }
+.dcoin-account h3 { font-size: 1.45rem; line-height: 1.05; }
+.dcoin-account-label { color: var(--mist); font-size: 0.8rem; letter-spacing: 0.12em; text-transform: uppercase; }
+.dcoin-balance-big {
+    font-family: var(--font-display); font-size: 2rem; line-height: 1;
+    color: var(--signal); letter-spacing: -0.04em; font-variant-numeric: tabular-nums;
+    text-align: right;
+}
+.dcoin-balance-big small { display: block; margin-top: 0.3rem; color: var(--mist); font-family: var(--font-body); font-size: 0.74rem; letter-spacing: 0.08em; text-transform: uppercase; }
+.dcoin-account-text { color: var(--mist); font-size: 0.94rem; margin: 1rem 0 1.15rem; }
+.dcoin-daily-head { display: flex; justify-content: space-between; gap: 1rem; color: var(--mist); font-size: 0.86rem; margin-bottom: 0.5rem; }
+.dcoin-daily-head strong { color: var(--bone); }
+.dcoin-daily-bar { height: 8px; border-radius: 999px; overflow: hidden; background: rgba(190, 225, 208, 0.13); }
+.dcoin-daily-fill { height: 100%; background: var(--signal); border-radius: inherit; transition: width 0.35s var(--ease); }
+.dcoin-recent { margin-top: 1.2rem; padding-top: 1rem; border-top: 1px solid var(--line); }
+.dcoin-recent h4 { font-family: var(--font-body); font-size: 0.82rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--mist); margin-bottom: 0.65rem; }
+.dcoin-recent-item { display: flex; justify-content: space-between; gap: 0.8rem; padding: 0.55rem 0; font-size: 0.88rem; }
+.dcoin-recent-item span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dcoin-recent-item span:last-child { color: var(--signal); white-space: nowrap; }
+
+.dcoin-ads { padding: 1rem; }
+.dcoin-ads-head { display: flex; justify-content: space-between; align-items: center; gap: 1rem; padding: 0.25rem 0.25rem 0.9rem; }
+.dcoin-ads-head h3 { font-size: 1.2rem; }
+.dcoin-ads-head span { color: var(--mist); font-size: 0.82rem; }
+.dcoin-ads-list { display: grid; gap: 0.7rem; }
+.dcoin-ad {
+    width: 100%; display: grid; grid-template-columns: 104px minmax(0, 1fr) auto;
+    gap: 0.85rem; align-items: center; text-align: left;
+    padding: 0.65rem; border: 1px solid var(--line); border-radius: 16px;
+    background: rgba(190, 225, 208, 0.035); color: var(--bone); cursor: pointer;
+    font: inherit; transition: border-color 0.25s, background 0.25s, transform 0.25s var(--ease);
+}
+.dcoin-ad:hover { transform: translateY(-1px); border-color: rgba(190, 225, 208, 0.32); }
+.dcoin-ad.is-active { border-color: var(--signal); background: rgba(79, 224, 160, 0.08); }
+.dcoin-ad-thumb { position: relative; width: 104px; aspect-ratio: 16 / 9; overflow: hidden; border-radius: 11px; background: #020A07; }
+.dcoin-ad-thumb img,
+.dcoin-ad-thumb video { width: 100%; height: 100%; object-fit: cover; display: block; }
+.dcoin-ad-thumb span {
+    position: absolute; right: 0.35rem; bottom: 0.35rem;
+    padding: 0.16rem 0.42rem; border-radius: 999px;
+    background: rgba(2, 10, 7, 0.78); color: var(--bone); font-size: 0.68rem;
+}
+.dcoin-ad-meta { min-width: 0; }
+.dcoin-ad-title { font-size: 0.95rem; font-weight: 600; line-height: 1.25; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.dcoin-ad-meta p { color: var(--mist); font-size: 0.79rem; margin-top: 0.25rem; }
+.dcoin-ad-reward { color: var(--signal); font-family: var(--font-display); font-weight: 700; white-space: nowrap; }
+.dcoin-empty { padding: 2.2rem 1.2rem; text-align: center; color: var(--mist); }
+.dcoin-empty h3 { color: var(--bone); margin-bottom: 0.45rem; }
+
+/* ---------- Satın alma penceresi ve bildirim ---------- */
+.dcoin-modal {
+    position: fixed; inset: 0; z-index: 220; display: none;
+    align-items: center; justify-content: center; padding: 1rem;
+}
+.dcoin-modal.open { display: flex; }
+.dcoin-modal-bg { position: absolute; inset: 0; background: rgba(2, 10, 7, 0.78); backdrop-filter: blur(8px); }
+.dcoin-modal-card {
+    position: relative; width: min(100%, 30rem);
+    padding: clamp(1.4rem, 4vw, 2rem);
+    background: var(--pine-2); border: 1px solid var(--line); border-radius: 24px;
+    box-shadow: 0 35px 80px -30px rgba(0, 0, 0, 0.95);
+}
+.dcoin-modal-card h3 { font-size: 1.8rem; line-height: 1.05; margin-bottom: 0.65rem; }
+.dcoin-modal-card > p { color: var(--mist); font-size: 0.95rem; }
+.dcoin-code-label { display: block; margin: 1.25rem 0 0.45rem; color: var(--mist); font-size: 0.78rem; letter-spacing: 0.1em; text-transform: uppercase; }
+.dcoin-key-box {
+    display: flex; align-items: center; justify-content: space-between; gap: 0.75rem;
+    padding: 0.85rem 1rem; border: 1px solid rgba(79, 224, 160, 0.35);
+    border-radius: 14px; background: rgba(79, 224, 160, 0.08);
+}
+.dcoin-key-box code { color: var(--signal); font-weight: 700; overflow-wrap: anywhere; }
+.dcoin-modal [hidden] { display: none !important; }
+.dcoin-order-code-row {
+    display: flex; align-items: center; justify-content: space-between; gap: 0.75rem;
+    margin-top: 0.75rem; padding: 0.78rem 0.9rem;
+    border: 1px solid var(--line); border-radius: 14px;
+    background: rgba(190, 225, 208, 0.05);
+}
+.dcoin-order-code-meta { display: flex; flex-direction: column; gap: 0.12rem; min-width: 0; }
+.dcoin-order-code-meta span {
+    color: var(--mist); font-size: 0.7rem; font-weight: 700;
+    letter-spacing: 0.1em; text-transform: uppercase;
+}
+.dcoin-order-code-meta code { color: var(--bone); font-weight: 700; overflow-wrap: anywhere; }
+.dcoin-order-code-row .btn { width: auto !important; flex: none; padding: 0.55rem 0.8rem; font-size: 0.82rem; }
+.dcoin-modal-note { color: var(--mist); font-size: 0.84rem; margin-top: 0.85rem; }
+.dcoin-modal-actions { display: flex; gap: 0.7rem; margin-top: 1.25rem; flex-wrap: wrap; }
+.dcoin-modal-actions .btn { flex: 1 1 180px; width: auto !important; }
+.dcoin-whatsapp-btn {
+    background: #25D366; border-color: #25D366; color: #06281A;
+    display: inline-flex; align-items: center; justify-content: center; gap: 0.55rem;
+    font-weight: 700;
+}
+.dcoin-whatsapp-btn:hover { background: #39E27A; border-color: #39E27A; color: #06281A; transform: translateY(-2px); }
+.dcoin-whatsapp-btn svg { flex: none; }
+.dcoin-toast {
+    position: fixed; left: 50%; bottom: 1.25rem; z-index: 240;
+    transform: translate(-50%, 16px); opacity: 0; pointer-events: none;
+    max-width: min(92vw, 32rem); padding: 0.85rem 1.1rem; border-radius: 999px;
+    background: var(--bone); color: var(--pine); font-size: 0.9rem; font-weight: 600;
+    box-shadow: 0 22px 45px -20px rgba(0, 0, 0, 0.85);
+    transition: opacity 0.3s var(--ease), transform 0.3s var(--ease);
+    text-align: center;
+}
+.dcoin-toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+/* ---------- Giriş / kayıt ---------- */
+.auth-section {
+    max-width: var(--wrap); margin: 0 auto;
+    padding: 10.5rem var(--gutter) clamp(4rem, 8vw, 7rem);
+}
+.auth-layout {
+    display: grid; grid-template-columns: minmax(0, 0.92fr) minmax(300px, 0.72fr);
+    gap: clamp(1.25rem, 4vw, 3rem); align-items: stretch;
+}
+.auth-card {
+    background: var(--pine-2); border: 1px solid var(--line);
+    border-radius: 24px; padding: clamp(1.5rem, 4vw, 2.6rem);
+}
+.auth-card h1 { font-size: clamp(2.4rem, 5vw, 4.4rem); line-height: 0.95; letter-spacing: -0.045em; margin: 0.8rem 0 1rem; }
+.auth-intro { color: var(--mist); max-width: 48ch; margin-bottom: 1.6rem; }
+.auth-form .field:last-of-type { margin-bottom: 1rem; }
+.auth-check {
+    display: flex; align-items: flex-start; gap: 0.65rem;
+    color: var(--mist); font-size: 0.9rem; margin: 0.25rem 0 1.25rem; cursor: pointer;
+}
+.auth-check input { width: auto; margin-top: 0.3rem; accent-color: var(--signal); }
+.auth-alert {
+    padding: 0.9rem 1rem; border-radius: 14px; margin-bottom: 1rem;
+    font-size: 0.92rem; border: 1px solid var(--line);
+}
+.auth-alert.is-error { background: rgba(255, 138, 107, 0.1); border-color: rgba(255, 138, 107, 0.35); }
+.auth-alert.is-success { background: rgba(79, 224, 160, 0.09); border-color: rgba(79, 224, 160, 0.35); }
+.auth-foot { margin-top: 1.35rem; padding-top: 1.1rem; border-top: 1px solid var(--line); color: var(--mist); font-size: 0.94rem; }
+.auth-foot a { color: var(--signal); font-weight: 600; }
+.auth-demo { margin-top: 0.55rem; font-size: 0.84rem; }
+.auth-demo code { color: var(--bone); background: rgba(190, 225, 208, 0.08); padding: 0.12rem 0.4rem; border-radius: 6px; }
+.auth-side { display: grid; gap: 1.25rem; align-content: stretch; }
+.auth-side-card {
+    display: flex; flex-direction: column; justify-content: flex-end;
+    min-height: 13rem; padding: clamp(1.4rem, 3vw, 2rem);
+    border: 1px solid var(--line); border-radius: 24px;
+    background: var(--pine-2); position: relative; overflow: hidden;
+}
+.auth-side-card::before {
+    content: ""; position: absolute; inset: 0;
+    background-image: radial-gradient(circle, rgba(147, 168, 158, 0.2) 1.2px, transparent 1.7px);
+    background-size: 24px 24px;
+    -webkit-mask-image: linear-gradient(to bottom, #000 0%, transparent 68%);
+            mask-image: linear-gradient(to bottom, #000 0%, transparent 68%);
+}
+.auth-side-card > * { position: relative; }
+.auth-side-card.is-light { background: var(--bone); color: var(--pine); }
+.auth-side-card h2 { font-size: clamp(1.8rem, 3vw, 2.7rem); line-height: 1.02; margin-bottom: 0.7rem; }
+.auth-side-card p { color: var(--mist); max-width: 40ch; }
+.auth-side-card.is-light p { color: #3C5249; }
+
+@media (max-width: 980px) {
+    .dcoin-layout { grid-template-columns: 1fr; }
+    .dcoin-side { grid-template-columns: 1fr 1fr; align-items: start; }
+}
+@media (max-width: 760px) {
+    .auth-section { padding-top: 9rem; }
+    .auth-layout { grid-template-columns: 1fr; }
+    .dcoin-side { grid-template-columns: 1fr; }
+    .dcoin-status { margin-left: 0; text-align: left; width: 100%; }
+    .store-tools .search-box { max-width: none; }
+}
+@media (max-width: 560px) {
+    .dcoin-detail-action { align-items: stretch; flex-direction: column; }
+    .dcoin-detail-panel .dcoin-actions,
+    .dcoin-detail-panel .dcoin-buy { width: 100% !important; }
+    .dcoin-buy-row { align-items: flex-start; }
+    .dcoin-actions { width: 100%; }
+    .dcoin-buy,
+    .dcoin-cash { flex: 1 1 auto; padding: 0.55rem 0.65rem; font-size: 0.76rem; }
+    .dcoin-ad { grid-template-columns: 86px minmax(0, 1fr); }
+    .dcoin-ad-thumb { width: 86px; }
+    .dcoin-ad-reward { grid-column: 2; }
+    .dcoin-account-top { flex-direction: column; }
+    .dcoin-balance-big { text-align: left; }
+    .dcoin-modal-actions { flex-direction: column; }
+    .dcoin-key-box { align-items: flex-start; flex-direction: column; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .dcoin-progress-fill,
+    .dcoin-daily-fill,
+    .dcoin-flash,
+    .dcoin-toast,
+    .dcoin-ad { transition: none; }
+}

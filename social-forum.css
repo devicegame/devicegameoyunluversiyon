@@ -1,0 +1,258 @@
+/* =========================================================
+   DG Social v2 — forum, özel mesaj ve canlı sohbet katmanı
+   Bu dosya social.css'in ardından otomatik yüklenir.
+   ========================================================= */
+.social-shell [id] { scroll-margin-top: 10.5rem; }
+.social-announcement { display: flex; align-items: center; gap: .8rem; border-color: rgba(79,224,160,.35); }
+.social-announcement > span { flex: 1; }
+.social-announcement-close { width: 34px; height: 34px; flex: none; display: grid; place-items: center; border-radius: 50%; border: 1px solid var(--line); background: rgba(10,26,21,.35); color: var(--bone); font: inherit; font-size: 1.25rem; cursor: pointer; }
+
+.social-avatar { position: relative; overflow: hidden; }
+.social-avatar img { position: absolute; inset: 0; z-index: 2; width: 100%; height: 100%; object-fit: cover; }
+.social-avatar-initials { position: relative; z-index: 1; line-height: 1; }
+.social-presence { display: inline-flex; align-items: center; gap: .45rem; color: var(--mist); font-size: .82rem; font-weight: 700; }
+.social-presence i, .social-presence-dot { width: 9px; height: 9px; flex: none; border-radius: 50%; background: rgba(190,225,208,.35); display: inline-block; }
+.social-presence.is-online, .social-presence-dot.is-online { color: var(--signal); }
+.social-presence.is-online i, .social-presence-dot.is-online { background: var(--signal); box-shadow: 0 0 0 4px rgba(79,224,160,.12); }
+.social-presence-line { margin-top: .45rem; }
+
+.social-mini-badge.is-prefix { color: #c8f5de; border-color: rgba(79,224,160,.38); }
+.social-mini-badge.is-solution { color: var(--pine); background: var(--signal); border-color: var(--signal); }
+.social-mini-badge.is-unread { color: var(--pine); background: #ffe29a; border-color: #ffe29a; }
+.social-mini-badge.is-author { color: #ffe1a8; border-color: rgba(244,193,93,.45); }
+.social-post-card.is-unread { border-color: rgba(255,226,154,.45); }
+.social-post-stats { display: flex; flex-wrap: wrap; gap: .45rem 1rem; margin-top: .9rem; color: var(--mist); font-size: .84rem; }
+.social-post-stats.is-detail { margin: -.5rem 0 1.2rem; }
+.social-heading-count { color: var(--signal); font-size: .78em; }
+
+/* Yüklenme/yerinde akış geri bildirimi */
+[data-social-feed-root].is-feed-loading .social-main { opacity: .62; }
+[data-social-feed-root].is-feed-loading .social-main::before { content: "Akış güncelleniyor…"; width: fit-content; padding: .45rem .75rem; border-radius: 999px; background: var(--bone); color: var(--pine); font-size: .8rem; font-weight: 800; }
+
+/* Konu listesi ve gelişmiş arama */
+.social-topic-row { display: grid; grid-template-columns: minmax(0,1fr) auto; align-items: center; border-radius: 12px; }
+.social-topic-row.is-active { background: rgba(190,225,208,.05); }
+.social-topic-row form { margin: 0; padding-right: .45rem; }
+.social-topic-watch { border: 1px solid var(--line); border-radius: 999px; padding: .38rem .62rem; background: transparent; color: var(--mist); font: inherit; font-size: .75rem; font-weight: 800; cursor: pointer; }
+.social-topic-watch.is-active { background: var(--signal); border-color: var(--signal); color: var(--pine); }
+.social-advanced-panel { border: 1px solid var(--line); border-radius: 18px; background: rgba(14,36,28,.72); padding: .9rem 1rem; }
+.social-advanced-panel > summary { cursor: pointer; font-weight: 800; }
+.social-advanced-search { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: .85rem; margin-top: 1rem; }
+.social-advanced-search label { display: grid; gap: .4rem; color: var(--mist); font-size: .86rem; font-weight: 700; }
+.social-advanced-actions { display: flex; align-items: end; flex-wrap: wrap; gap: .6rem; }
+.social-feed-summary { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: .75rem; color: var(--mist); font-size: .9rem; }
+.social-feed-summary form { margin: 0; }
+.social-comment-result-list, .social-related-links, .social-panel-links { display: grid; gap: .65rem; }
+.social-comment-result-list a, .social-related-links a { display: grid; gap: .25rem; padding: .75rem 0; border-top: 1px solid var(--line); }
+.social-comment-result-list a:first-child, .social-related-links a:first-child { border-top: 0; }
+.social-comment-result-list span, .social-comment-result-list small, .social-related-links small { color: var(--mist); }
+.social-chat-preview { display: grid; gap: .8rem; }
+.social-chat-preview div { display: grid; gap: .22rem; padding-bottom: .7rem; border-bottom: 1px solid var(--line); }
+.social-chat-preview div:last-child { border-bottom: 0; padding-bottom: 0; }
+.social-chat-preview span, .social-chat-preview small { color: var(--mist); font-size: .86rem; overflow-wrap: anywhere; }
+.social-online-summary { display: grid; gap: .3rem; margin-top: 1rem; }
+.social-online-summary span { color: var(--mist); font-size: .84rem; overflow-wrap: anywhere; }
+.social-forum-stats dl { display: grid; grid-template-columns: 1fr 1fr; gap: .65rem; }
+.social-forum-stats dl div { padding: .75rem; border: 1px solid var(--line); border-radius: 13px; background: rgba(10,26,21,.35); }
+.social-forum-stats dt { color: var(--mist); font-size: .76rem; }
+.social-forum-stats dd { font-family: var(--font-display); font-size: 1.25rem; font-weight: 800; }
+.social-panel-links { grid-template-columns: 1fr 1fr; margin-top: .9rem; }
+
+/* Güvenli markdown-lite */
+.social-rich-text code { padding: .12em .38em; border-radius: 6px; background: rgba(190,225,208,.1); color: #c8f5de; font-family: ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size: .92em; }
+.social-rich-text pre { max-width: 100%; overflow-x: auto; padding: 1rem; border: 1px solid var(--line); border-radius: 14px; background: #07130f; }
+.social-rich-text pre code { padding: 0; background: transparent; }
+.social-rich-text blockquote { padding: .85rem 1rem; border-left: 3px solid var(--signal); border-radius: 0 13px 13px 0; background: rgba(79,224,160,.07); color: var(--mist); }
+.social-rich-text ul, .social-rich-text ol { margin-left: 1.35rem; display: grid; gap: .4rem; }
+.social-rich-text h3, .social-rich-text h4 { color: var(--bone); line-height: 1.25; }
+.social-spoiler { padding: .08em .35em; border-radius: 6px; background: #020806; color: transparent; text-shadow: 0 0 9px rgba(232,235,228,.75); cursor: help; }
+.social-spoiler:hover, .social-spoiler:focus { color: var(--bone); text-shadow: none; }
+
+/* Editör, profil ve çözüm */
+.social-editor-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem; margin: .45rem 0 .65rem; }
+.social-editor-toolbar button { min-height: 34px; padding: .35rem .65rem; border: 1px solid var(--line); border-radius: 9px; background: rgba(10,26,21,.45); color: var(--mist); font: inherit; font-size: .82rem; font-weight: 800; cursor: pointer; }
+.social-editor-toolbar button:hover { color: var(--pine); background: var(--bone); }
+.social-editor-hint { color: var(--mist); font-size: .76rem; margin-left: auto; }
+.social-editor-preview { margin: .2rem 0 .8rem; padding: 1rem; border: 1px dashed rgba(79,224,160,.4); border-radius: 14px; background: rgba(79,224,160,.05); }
+.social-similar-posts { display: grid; gap: .45rem; margin-top: .65rem; padding: .85rem; border: 1px solid rgba(244,193,93,.35); border-radius: 13px; background: rgba(244,193,93,.08); font-size: .9rem; }
+.social-similar-posts a { color: var(--signal); font-weight: 700; }
+.social-draft-row { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: .6rem; margin-top: .55rem; color: var(--mist); font-size: .82rem; }
+.social-settings-group { border: 1px solid var(--line); border-radius: 17px; padding: 1rem 1.1rem; margin: 1rem 0; }
+.social-settings-group legend { padding: 0 .5rem; font-weight: 800; }
+.social-settings-group .social-check { margin: .55rem 0; }
+.social-avatar-editor-row { display: flex; gap: 1rem; align-items: flex-start; flex-wrap: wrap; }
+.social-avatar-editor-row > div { flex: 1; min-width: 230px; }
+.social-profile-signature { width: fit-content; max-width: 100%; margin-top: .9rem; padding: .65rem .85rem; border-left: 3px solid var(--signal); background: rgba(79,224,160,.07); color: var(--mist); font-size: .9rem; }
+.social-comment-signature { margin-top: .75rem; padding-top: .65rem; border-top: 1px dashed var(--line); color: var(--mist); font-size: .84rem; }
+.social-comment.is-solution { margin: .4rem -.7rem; padding: 1.15rem .7rem; border: 1px solid rgba(79,224,160,.5); border-radius: 16px; background: rgba(79,224,160,.06); }
+.social-text-button.is-active { color: var(--signal); }
+.social-comment-toolbar { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: .75rem; margin-bottom: 1rem; }
+.social-comment-toolbar form { display: flex; align-items: center; gap: .6rem; margin: 0; }
+.social-comment-toolbar label { color: var(--mist); font-weight: 700; font-size: .88rem; }
+.social-comment-toolbar select { width: auto; min-width: 170px; padding: .65rem .85rem; }
+.social-move-form { display: flex; align-items: center; gap: .55rem; flex-wrap: wrap; }
+.social-move-form label { display: flex; align-items: center; gap: .5rem; color: var(--mist); font-size: .86rem; }
+.social-move-form select { width: auto; padding: .6rem .75rem; }
+.social-action-note { color: #ffe1a8; font-size: .86rem; font-weight: 700; }
+.social-admin-warning { display: grid; gap: .85rem; margin-top: 1rem; }
+
+/* Forum panosu */
+.social-board-layout, .social-members-layout { display: grid; grid-template-columns: minmax(0,1fr) 330px; gap: 1.25rem; align-items: start; }
+.social-board-group { margin-bottom: 2rem; }
+.social-board-table { overflow: hidden; border: 1px solid var(--line); border-radius: 20px; background: rgba(14,36,28,.78); }
+.social-board-head, .social-board-row { display: grid; grid-template-columns: minmax(240px,1.5fr) 130px minmax(180px,1fr) 180px; gap: 1rem; align-items: center; padding: 1rem 1.15rem; }
+.social-board-head { color: var(--mist); background: rgba(10,26,21,.55); font-size: .72rem; font-weight: 900; letter-spacing: .08em; text-transform: uppercase; }
+.social-board-row { border-top: 1px solid var(--line); }
+.social-board-row.is-official { background: linear-gradient(90deg,rgba(79,224,160,.06),transparent); }
+.social-board-row.is-inactive { opacity: .62; }
+.social-board-topic { display: flex; align-items: flex-start; gap: .85rem; min-width: 0; }
+.social-board-icon { width: 46px; height: 46px; flex: none; display: grid; place-items: center; border: 1px solid var(--line); border-radius: 14px; background: rgba(10,26,21,.45); font-size: 1.35rem; }
+.social-board-topic h3 { font-size: 1.05rem; line-height: 1.25; }
+.social-board-topic h3 a:hover { color: var(--signal); }
+.social-board-topic p { color: var(--mist); font-size: .88rem; margin-top: .25rem; }
+.social-board-badges { display: flex; flex-wrap: wrap; gap: .4rem; margin-top: .55rem; }
+.social-board-counts { display: grid; grid-template-columns: auto auto; gap: .15rem .55rem; align-items: baseline; color: var(--mist); font-size: .82rem; }
+.social-board-counts strong { color: var(--bone); font-family: var(--font-display); font-size: 1.05rem; text-align: right; }
+.social-board-counts > small:last-child { grid-column: 1 / -1; }
+.social-board-latest { display: grid; gap: .25rem; min-width: 0; }
+.social-board-latest a:first-child { font-weight: 800; line-height: 1.35; overflow-wrap: anywhere; }
+.social-board-latest small { color: var(--mist); }
+.social-board-actions { display: flex; flex-wrap: wrap; align-items: center; gap: .45rem; }
+.social-board-actions form { margin: 0; }
+.social-muted-tags { margin-top: 1rem; }
+
+/* Üyeler */
+.social-member-tools { margin-bottom: 1rem; }
+.social-member-search { display: grid; grid-template-columns: minmax(220px,1.4fr) minmax(180px,.8fr) auto auto auto; gap: .85rem; align-items: end; }
+.social-member-search .social-check { margin: 0; min-height: 48px; }
+.social-member-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 1rem; }
+.social-member-card { display: grid; align-content: start; gap: .75rem; }
+.social-author.is-member { align-items: flex-start; }
+.social-member-card > p { min-height: 3.2em; }
+.social-member-stats { display: grid; grid-template-columns: repeat(3,1fr); gap: .55rem; }
+.social-member-stats div { padding: .65rem; border: 1px solid var(--line); border-radius: 12px; background: rgba(10,26,21,.35); }
+.social-member-stats dt { color: var(--mist); font-size: .72rem; }
+.social-member-stats dd { font-weight: 900; }
+.social-member-award { color: #ffe1a8 !important; font-weight: 800; }
+.social-member-actions { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: auto; }
+.social-member-actions form { margin: 0; }
+.social-leaderboard ol { list-style: none; display: grid; gap: .55rem; }
+.social-leaderboard li { display: flex; align-items: center; gap: .65rem; }
+.social-leaderboard li > a { display: flex; align-items: center; gap: .7rem; min-width: 0; }
+.social-leaderboard li a span { display: grid; }
+.social-leaderboard li small { color: var(--mist); }
+.social-rank { width: 28px; height: 28px; flex: none; display: grid; place-items: center; border-radius: 50%; background: var(--bone); color: var(--pine); font-weight: 900; font-size: .8rem; }
+
+/* Bildirim merkezi */
+.social-notification-filters { display: flex; flex-wrap: wrap; gap: .5rem; margin-bottom: 1rem; }
+.social-notification-filters a { padding: .55rem .85rem; border: 1px solid var(--line); border-radius: 999px; color: var(--mist); font-size: .86rem; font-weight: 700; }
+.social-notification-filters a[aria-current="page"] { background: var(--bone); color: var(--pine); }
+.social-notification-filters span { opacity: .72; }
+.social-notification-day { font-size: 1rem; color: var(--mist); margin: .65rem 0 0; }
+.social-notification-type { display: inline-block; margin-bottom: .25rem; color: var(--signal); font-size: .72rem; font-weight: 900; letter-spacing: .06em; text-transform: uppercase; }
+.social-notification-footnote { margin-top: 1rem; text-align: center; }
+
+/* Özel mesajlar */
+.social-dm-layout { display: grid; grid-template-columns: 340px minmax(0,1fr); gap: 1.25rem; align-items: start; }
+.social-dm-sidebar { position: sticky; top: 10rem; }
+.social-dm-search { display: flex; gap: .5rem; margin-bottom: .8rem; }
+.social-dm-search input { min-width: 0; }
+.social-dm-tabs { display: grid; grid-template-columns: repeat(3,1fr); gap: .4rem; margin-bottom: .85rem; }
+.social-dm-tabs a { padding: .55rem .35rem; border: 1px solid var(--line); border-radius: 999px; color: var(--mist); font-size: .78rem; font-weight: 800; text-align: center; }
+.social-dm-tabs a[aria-current="page"] { color: var(--pine); background: var(--bone); }
+.social-dm-list { display: grid; gap: .45rem; max-height: 68vh; overflow-y: auto; padding-right: .2rem; }
+.social-dm-list-item { display: grid; grid-template-columns: auto minmax(0,1fr) auto; gap: .7rem; align-items: center; padding: .72rem; border: 1px solid transparent; border-radius: 15px; }
+.social-dm-list-item:hover { background: rgba(190,225,208,.06); }
+.social-dm-list-item.is-active { border-color: rgba(79,224,160,.4); background: rgba(79,224,160,.07); }
+.social-dm-list-item.is-unread { border-color: rgba(255,226,154,.4); }
+.social-dm-list-main { display: grid; gap: .12rem; min-width: 0; }
+.social-dm-list-main > span:not(.social-dm-list-top) { color: var(--mist); font-size: .82rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.social-dm-list-main small { color: var(--mist); }
+.social-dm-list-main em { color: #ffe1a8; font-size: .74rem; font-style: normal; font-weight: 800; }
+.social-dm-list-top { display: flex; justify-content: space-between; gap: .6rem; }
+.social-dm-list-top strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.social-dm-main { min-width: 0; }
+.social-dm-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; flex-wrap: wrap; padding-bottom: 1rem; margin-bottom: 1rem; border-bottom: 1px solid var(--line); }
+.social-dm-header-actions { display: flex; align-items: center; flex-wrap: wrap; gap: .55rem; }
+.social-dm-header-actions form { margin: 0; }
+.social-dm-peer-status { color: var(--mist); font-size: .8rem; }
+.social-dm-peer-status.is-online { color: var(--signal); }
+.social-dm-messages, .social-chat-messages { display: grid; align-content: start; gap: .85rem; max-height: min(62vh,680px); overflow-y: auto; overflow-x: hidden; padding: .25rem .35rem .25rem 0; scroll-behavior: smooth; }
+.social-dm-messages { min-height: 320px; }
+.social-dm-message, .social-chat-message { display: grid; grid-template-columns: auto minmax(0,1fr); gap: .65rem; align-items: start; max-width: 88%; }
+.social-dm-message.is-mine, .social-chat-message.is-mine { justify-self: end; }
+.social-dm-bubble, .social-chat-bubble { min-width: 0; padding: .75rem .9rem; border: 1px solid var(--line); border-radius: 6px 18px 18px 18px; background: rgba(10,26,21,.52); }
+.social-dm-message.is-mine .social-dm-bubble, .social-chat-message.is-mine .social-chat-bubble { border-radius: 18px 6px 18px 18px; background: rgba(79,224,160,.12); border-color: rgba(79,224,160,.28); }
+.social-dm-message.is-muted-message, .social-chat-message.is-muted-message { opacity: .68; }
+.social-dm-meta { display: flex; flex-wrap: wrap; align-items: baseline; gap: .4rem .6rem; margin-bottom: .4rem; }
+.social-dm-meta small, .social-dm-meta time { color: var(--mist); font-size: .76rem; }
+.social-read-label { color: var(--signal); font-size: .72rem; font-weight: 800; }
+.social-message-tools { display: flex; flex-wrap: wrap; gap: .35rem; }
+.social-message-tools form { margin: 0; }
+.social-dm-form, .social-chat-form { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: .45rem .75rem; margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--line); }
+.social-dm-form textarea, .social-chat-form textarea { resize: vertical; min-height: 58px; }
+.social-chat-form-side { display: grid; align-content: end; gap: .4rem; color: var(--mist); font-size: .78rem; text-align: right; }
+.social-chat-form .social-form-note { grid-column: 1 / -1; }
+.social-chat-history { display: flex; justify-content: center; margin-bottom: .8rem; }
+.social-chat-new { justify-self: center; margin-top: .7rem; }
+.social-chat-typing { min-height: 1.3em; color: var(--signal); font-size: .84rem; font-weight: 700; }
+.social-action-row { display: flex; flex-wrap: wrap; gap: .6rem; margin-top: .8rem; }
+.social-action-row form { margin: 0; }
+.social-dm-welcome { margin: 1rem 0; }
+
+/* Canlı sohbet */
+.social-chat-layout { display: grid; grid-template-columns: 280px minmax(0,1fr) 300px; gap: 1.25rem; align-items: start; }
+.social-chat-channel-list { display: grid; gap: .5rem; }
+.social-chat-channel { display: grid; grid-template-columns: auto minmax(0,1fr); gap: .25rem .7rem; align-items: start; padding: .8rem; border: 1px solid transparent; border-radius: 15px; }
+.social-chat-channel:hover { background: rgba(190,225,208,.06); }
+.social-chat-channel.is-active { border-color: rgba(79,224,160,.42); background: rgba(79,224,160,.07); }
+.social-chat-channel > span:nth-child(2) { display: grid; gap: .15rem; min-width: 0; }
+.social-chat-channel small { color: var(--mist); }
+.social-chat-channel .social-channel-meta { grid-column: 2; font-size: .74rem; }
+.social-chat-main { min-width: 0; }
+.social-chat-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; flex-wrap: wrap; padding-bottom: 1rem; margin-bottom: 1rem; border-bottom: 1px solid var(--line); }
+.social-chat-status { display: inline-flex; align-items: center; gap: .45rem; color: var(--signal); font-size: .78rem; font-weight: 800; }
+.social-chat-status::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--signal); box-shadow: 0 0 0 4px rgba(79,224,160,.1); }
+.social-chat-pinned { display: grid; gap: .45rem; margin-bottom: .9rem; padding: .85rem 1rem; border: 1px solid rgba(244,193,93,.4); border-radius: 14px; background: rgba(244,193,93,.08); }
+.social-chat-pinned small { color: var(--mist); }
+.social-chat-messages { min-height: 360px; }
+.social-chat-message.is-pinned .social-chat-bubble { border-color: rgba(244,193,93,.45); }
+.social-chat-actions { margin-top: .45rem; }
+.social-chat-actions > summary { cursor: pointer; color: var(--mist); font-size: .8rem; font-weight: 800; }
+.social-chat-actions form { margin: .3rem 0; }
+.social-chat-actions .social-report { margin-top: .35rem; }
+.social-chat-actions .social-report form { min-width: min(300px,76vw); }
+
+@media (max-width: 1180px) {
+  .social-chat-layout { grid-template-columns: 250px minmax(0,1fr); }
+  .social-chat-layout .social-sidebar-right { grid-column: 1 / -1; position: static; grid-template-columns: repeat(3,1fr); }
+  .social-member-search { grid-template-columns: 1fr 1fr; }
+  .social-board-head, .social-board-row { grid-template-columns: minmax(230px,1.4fr) 115px minmax(160px,1fr) 160px; }
+}
+@media (max-width: 920px) {
+  .social-board-layout, .social-members-layout, .social-dm-layout, .social-chat-layout { grid-template-columns: 1fr; }
+  .social-dm-sidebar { position: static; }
+  .social-dm-list { max-height: 320px; }
+  .social-chat-layout .social-sidebar-right { grid-template-columns: 1fr; }
+  .social-member-grid { grid-template-columns: 1fr; }
+  .social-board-head { display: none; }
+  .social-board-row { grid-template-columns: minmax(0,1fr) auto; }
+  .social-board-latest, .social-board-actions { grid-column: 1 / -1; }
+}
+@media (max-width: 620px) {
+  .social-shell [id] { scroll-margin-top: 8.5rem; }
+  .social-advanced-search, .social-member-search { grid-template-columns: 1fr; }
+  .social-dm-message, .social-chat-message { max-width: 96%; }
+  .social-dm-message .social-avatar, .social-chat-message .social-avatar { width: 36px; height: 36px; font-size: .82rem; }
+  .social-dm-form, .social-chat-form { grid-template-columns: 1fr; }
+  .social-chat-form-side { text-align: left; }
+  .social-dm-messages, .social-chat-messages { max-height: 58vh; min-height: 300px; }
+  .social-comment-toolbar form, .social-comment-toolbar select { width: 100%; }
+  .social-comment-toolbar select { min-width: 0; }
+  .social-editor-hint { display: none; }
+  .social-board-row { padding: .9rem; }
+  .social-member-stats { grid-template-columns: repeat(2,1fr); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .social-dm-messages, .social-chat-messages { scroll-behavior: auto; }
+}
