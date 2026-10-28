@@ -1,0 +1,32 @@
+[
+    {
+        "slug": "genel",
+        "name": "Genel",
+        "description": "Kategorisi belirtilmemiş blog yazıları.",
+        "order": 1
+    },
+    {
+        "slug": "duyuru",
+        "name": "Duyuru",
+        "description": "Device Game duyuruları ve güncellemeler.",
+        "order": 2
+    },
+    {
+        "slug": "gelistirici-gunlugu",
+        "name": "Geliştirici Günlüğü",
+        "description": "Oyun geliştirme sürecinden notlar ve perde arkası.",
+        "order": 3
+    },
+    {
+        "slug": "rehber",
+        "name": "Rehber",
+        "description": "Ürün, platform ve oyun rehberleri.",
+        "order": 4
+    },
+    {
+        "slug": "studyo",
+        "name": "Stüdyo",
+        "description": "Stüdyodan haberler ve ekip notları.",
+        "order": 5
+    }
+]

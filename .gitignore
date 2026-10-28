@@ -1,0 +1,36 @@
+# Calisma zamani verisi — her kurulumun kendi dosyasi vardir, repoya girmez
+storage/dg/database.json
+storage/dg/database.json.tmp.*
+storage/dg/database.lock
+storage/dg/*.bak
+
+# DG Social calisma verisi ve kullanici yuklemeleri
+storage/social/
+uploads/social/
+
+# Mini oyun calisma verisi (kosular, siralama, ayarlar) ve kozmetik gorselleri
+storage/minigame/
+uploads/minigame/
+
+# Gelistirme bagimliliklari (yerel onizleme)
+node_modules/
+
+# Ortam dosyalari
+.env
+
+# Hosting hata loglari
+error_log
+*.log
+
+# Yuklenen videolar (buyuk dosyalar repoya girmesin)
+uploads/*.mp4
+uploads/*.webm
+uploads/*.mov
+uploads/*.ogg
+!uploads/.htaccess
+!uploads/index.html
+
+# Gecici/eski teshis dosyalari
+/test_db.php
+/hata_gor.php
+/hata2.php
