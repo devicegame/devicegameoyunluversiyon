@@ -6,6 +6,11 @@
 >
 > Durum: **prototip** — gerçek D-Coin tutarları, fiyatlar ve ödüller örnektir
 > ve işletmeci onayı olmadan yayına alınmamalıdır.
+>
+> **Not (v2):** Bu belge v1 (sadece zıplama) sürümünün keşif ve plan
+> kaydıdır. Savaş güncellemesiyle eklenen düşmanlar, ateş, can, eğilme, dash,
+> üç fazlı boss ve 180 saniyelik tur sınırı **MINI-OYUN.md §2.1**’de
+> belgelenmiştir; aşağıdaki girdi listesi (`action ∈ {1,2}`) v1 içindir.
 
 ## 1. Mevcut sistem (keşif bulguları)
 

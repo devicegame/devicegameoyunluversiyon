@@ -3,43 +3,48 @@
  *
  *   node tests/fixtures/make-vectors.mjs
  *
- * Üretilen `minigame-vectors.json`, PHP motorunun aynı girdilerle aynı
- * sonucu verdiğini doğrulamak için `tests/php/engine_test.php` tarafından
- * okunur. Bot girdileri bilinçli olarak "insan üstü" kayıtlar içerir.
+ * Üretilen `minigame-vectors.json`, PHP motorunun aynı seed + aynı girdilerle
+ * AYNI sonucu verdiğini doğrulamak içindir (`tests/php/engine_test.php`).
+ *
+ * Bot girdileri bilinçli olarak "insan üstü" kayıtlar içerir: uzun turlar,
+ * boss dövüşü, eğilme ve ateş kullanımı. Bu, motorun tüm dallarını kapsar.
  */
 import { writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { encodeInputs, simulate, CONFIG } from '../../assets/js/minigame/engine.js';
+import { CONFIG, encodeInputs, simulate } from '../../assets/js/minigame/engine.js';
 import { playBot } from '../../tools/minigame-bot.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const cases = [];
 
-function addCase(name, seed, inputs, options) {
-    const result = simulate(seed, inputs, options);
+function addCase(name, seed, inputs, maxTicks) {
+    const result = simulate(seed, inputs, { maxTicks });
     cases.push({
         name,
         seed,
-        max_ticks: (options && options.maxTicks) || CONFIG.maxTicks,
+        max_ticks: maxTicks || CONFIG.maxTicks,
         inputs,
         encoded: encodeInputs(inputs),
         result,
     });
 }
 
-for (const seed of [1, 42, 7, 20240301, 2147483647, 4294967295, 305419896]) {
-    const maxTicks = seed === 1 ? 1800 : 3600;
+// Bot koşuları — uzun, boss'lu, ateş + eğilme + dash içeren
+for (const [seed, maxTicks] of [[1, 5400], [42, 5400], [20240301, 3600], [7, CONFIG.maxTicks]]) {
     const { inputs } = playBot(seed, { maxTicks });
-    addCase('bot-' + seed, seed, inputs, { maxTicks });
+    addCase('bot-' + seed, seed, inputs, maxTicks);
 }
 
-addCase('bos-girdi', 12345, [], { maxTicks: 600 });
-addCase('tek-zip', 98765, [[0, 1]], { maxTicks: 300 });
-addCase('zip-birak', 98765, [[0, 1], [6, 2]], { maxTicks: 300 });
-addCase('gec-zip', 555, [[31, 1], [45, 2]], { maxTicks: 600 });
-addCase('cift-zip', 777, [[0, 1], [10, 2], [33, 1], [43, 2]], { maxTicks: 600 });
-addCase('son-tick', 4242, [[0, 1], [Math.floor(CONFIG.maxTicks / 2), 1]], { maxTicks: 1200 });
+// Kenar durumları — her aksiyon ayrı ayrı
+addCase('bos-girdi', 12345, [], 900);
+addCase('zip-birak', 777, [[0, 1], [10, 2], [40, 1], [50, 2]], 900);
+addCase('egil-kalk', 555, [[20, 4], [60, 5], [90, 4], [200, 5]], 900);
+addCase('ates-serisi', 321, [[5, 3], [50, 3], [95, 3], [140, 3]], 1200);
+addCase('dash', 4242, [[30, 6], [60, 6], [95, 6]], 900);
+addCase('uc-zip', 98765, [[0, 1], [8, 2], [33, 1], [41, 2], [66, 1], [74, 2]], 900);
+addCase('uzun-bekleme', 24680, [[600, 1], [640, 2]], 1800);
+addCase('karisik', 13579, [[10, 3], [20, 1], [30, 2], [45, 4], [120, 5], [150, 3], [200, 6]], 1800);
 
 const payload = {
     engine: CONFIG.version,
@@ -48,16 +53,18 @@ const payload = {
 };
 
 const out = join(here, 'minigame-vectors.json');
-writeFileSync(out, JSON.stringify(payload, null, 2) + '\n');
+writeFileSync(out, JSON.stringify(payload) + '\n');
 console.log('yazıldı:', out, '· vaka:', cases.length);
 
 for (const item of cases) {
     console.log(
-        String(item.name).padEnd(22),
+        String(item.name).padEnd(18),
         'seed', String(item.seed).padStart(10),
-        'tick', String(item.result.ticks).padStart(5),
+        'tick', String(item.result.ticks).padStart(6),
         'skor', String(item.result.score).padStart(6),
-        'hücre', String(item.result.cells).padStart(4),
+        'hp', String(item.result.hp).padStart(3),
+        'öldürme', String(item.result.kills).padStart(3),
+        'boss', item.result.bossKilled ? 'evet' : 'hayır',
         item.result.reason
     );
 }

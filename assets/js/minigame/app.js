@@ -833,7 +833,7 @@ function idleOverlay() {
         el('h2', { text: logged ? 'Hazır mısın?' : 'Misafir antrenmanı' }),
         el('p', {
             text: logged
-                ? 'Zıpla, enerji hücrelerini topla, engellerden kaç. Tur yaklaşık 1–2 dakika sürer.'
+                ? 'Zıpla, eğil, ateş et; enerji hücrelerini topla ve 60. saniyede gelen boss\'u devir. Tur yaklaşık 1–3 dakika sürer.'
                 : 'Antrenmanı giriş yapmadan oynayabilirsin. D-Coin kazanmak ve sıralamaya girmek için Device Game hesabınla giriş yap.',
         }),
     ];
@@ -860,7 +860,10 @@ function idleOverlay() {
         }
     }
     parts.push(actions);
-    parts.push(el('p', { class: 'mg-sub mg-overlay-hint', text: 'Boşluk / ↑ zıpla · bırakınca kısa zıplama · dokunmatik desteklenir' }));
+    parts.push(el('p', {
+        class: 'mg-sub mg-overlay-hint',
+        text: 'Klavye: Boşluk zıpla · ↓ eğil · J ateş · Shift dash | Dokunmatik: sol eğil · orta ateş · sağ zıpla',
+    }));
     showOverlay(parts);
 }
 
@@ -892,15 +895,32 @@ function resultOverlay(info) {
     } else if (info.practice) {
         parts.push(el('h2', { text: 'Antrenman tamamlandı' }));
         parts.push(el('p', { text: 'Bu tur kaydedilmedi; D-Coin ve sıralama için sıralı tur başlat.' }));
+    } else if (result.reason === 'hp') {
+        parts.push(el('h2', { text: 'Canın bitti' }));
+        parts.push(el('p', { class: 'mg-sub', text: 'Düşman ateşinden kaçınmak için eğil ve dash kullan.' }));
     } else {
-        parts.push(el('h2', { text: result.reason === 'time' ? 'Süre tamamlandı!' : 'Tur bitti' }));
+        parts.push(el('h2', { text: 'Süre tamamlandı!' }));
     }
 
-    parts.push(el('div', { class: 'mg-result-grid' }, [
+    const stats = [
         el('div', {}, [el('span', { text: 'Skor' }), el('strong', { text: fmt(result.score) })]),
         el('div', {}, [el('span', { text: 'Süre' }), el('strong', { text: (result.seconds || ((result.ticks || 0) / 60)).toFixed(1) + ' sn' })]),
         el('div', {}, [el('span', { text: 'Hücre' }), el('strong', { text: fmt(result.cells) })]),
-    ]));
+    ];
+    const kills = result.kills;
+    const bossKilled = result.bossKilled != null ? result.bossKilled : result.boss_killed;
+    const bossHpLeft = result.bossHpLeft != null ? result.bossHpLeft : result.boss_hp_left;
+    const bossMaxHp = result.bossMaxHp != null ? result.bossMaxHp : (result.boss_max_hp || 150);
+    if (kills != null) {
+        stats.push(el('div', {}, [el('span', { text: 'Düşman' }), el('strong', { text: fmt(kills) })]));
+    }
+    if (bossKilled != null) {
+        const bossText = bossKilled === true
+            ? 'Devrildi'
+            : (bossHpLeft > 0 ? '%' + Math.round((bossHpLeft / (bossMaxHp || 150)) * 100) + ' kaldı' : '—');
+        stats.push(el('div', {}, [el('span', { text: 'Boss' }), el('strong', { text: bossText })]));
+    }
+    parts.push(el('div', { class: 'mg-result-grid' }, stats));
 
     if (info.rewards && info.rewards.paid > 0) {
         const titles = {};
@@ -951,11 +971,18 @@ const canvas = $('#mg-canvas');
 const game = canvas ? createGame({
     canvas,
     onCountdown: countdownOverlay,
+    onEvent: (event) => {
+        if (!event) return;
+        if (event.type === 'boss') toast('Çekirdek Muhafızı geldi! Eğil, ateş et, dash kullan.', 'error');
+        else if (event.type === 'boss_down') toast('Boss devrildi: +500 puan', 'good');
+    },
     onState: (next) => {
         const stage = $('#mg-stage');
         if (stage) stage.classList.toggle('is-live', next === 'running' || next === 'countdown');
-        const jump = $('#mg-jump');
-        if (jump) jump.disabled = next !== 'running';
+        ['mg-jump', 'mg-crouch', 'mg-fire', 'mg-dash'].forEach((id) => {
+            const button = $('#' + id);
+            if (button) button.disabled = next !== 'running';
+        });
     },
     onEnd: (payload) => {
         if (payload.ranked) {
@@ -1219,6 +1246,8 @@ if (fullBtn) {
     });
 }
 
+/* ---------------- dokunmatik kontroller ---------------- */
+
 const jumpBtn = $('#mg-jump');
 if (jumpBtn) {
     const press = (event) => {
@@ -1245,6 +1274,60 @@ if (jumpBtn) {
         if (event.code === 'Space' || event.code === 'Enter') {
             event.preventDefault();
             if (game) game.requestAction(2);
+        }
+    });
+}
+
+/** Basılı tutulan düğme: eğilme ve otomatik ateş. */
+function bindHold(selector, name, pressedAttr) {
+    const button = $(selector);
+    if (!button) return;
+    const on = (event) => {
+        event.preventDefault();
+        if (game) game.setHold(name, true);
+        if (pressedAttr) button.setAttribute('aria-pressed', 'true');
+    };
+    const off = (event) => {
+        if (event) event.preventDefault();
+        if (game) game.setHold(name, false);
+        if (pressedAttr) button.setAttribute('aria-pressed', 'false');
+    };
+    button.addEventListener('pointerdown', on);
+    button.addEventListener('pointerup', off);
+    button.addEventListener('pointercancel', off);
+    button.addEventListener('pointerleave', (event) => {
+        if (event.buttons) off(event);
+    });
+    button.addEventListener('keydown', (event) => {
+        if (event.code === 'Space' || event.code === 'Enter') {
+            event.preventDefault();
+            if (game) game.setHold(name, true);
+            if (pressedAttr) button.setAttribute('aria-pressed', 'true');
+        }
+    });
+    button.addEventListener('keyup', (event) => {
+        if (event.code === 'Space' || event.code === 'Enter') {
+            event.preventDefault();
+            if (game) game.setHold(name, false);
+            if (pressedAttr) button.setAttribute('aria-pressed', 'false');
+        }
+    });
+    button.addEventListener('blur', () => off());
+}
+
+bindHold('#mg-crouch', 'crouch', true);
+bindHold('#mg-fire', 'fire', true);
+
+const dashBtn = $('#mg-dash');
+if (dashBtn) {
+    dashBtn.addEventListener('pointerdown', (event) => {
+        event.preventDefault();
+        if (game) game.requestAction(6);
+    });
+    dashBtn.addEventListener('keydown', (event) => {
+        if (event.code === 'Space' || event.code === 'Enter') {
+            event.preventDefault();
+            if (game) game.requestAction(6);
         }
     });
 }

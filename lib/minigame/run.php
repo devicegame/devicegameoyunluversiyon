@@ -142,7 +142,7 @@ function mg_run_start(int $userId, ?int $now = null): array
 
     $token = bin2hex(random_bytes(32));
     $runId = 'run_' . bin2hex(random_bytes(12));
-    $ttl = max(60, mg_limit('run_ttl_seconds', 180));
+    $ttl = max(60, mg_limit('run_ttl_seconds', 300));
     $season = mg_active_season($now);
     $board = mg_current_board($now, $season);
 
@@ -201,7 +201,7 @@ function mg_run_start(int $userId, ?int $now = null): array
  */
 function mg_validate_inputs($raw, ?int $maxInputs = null): array
 {
-    $maxInputs = $maxInputs ?? max(1, mg_limit('max_inputs', 600));
+    $maxInputs = $maxInputs ?? max(1, mg_limit('max_inputs', 3000));
     if (!is_array($raw)) {
         return ['ok' => false, 'code' => 'invalid_input', 'error' => 'Girdi listesi geçersiz.'];
     }
@@ -230,7 +230,7 @@ function mg_validate_inputs($raw, ?int $maxInputs = null): array
         if ($tick <= $lastTick) {
             return ['ok' => false, 'code' => 'invalid_input', 'error' => 'Girdi sırası geçersiz.'];
         }
-        if ($action !== MG_ACTION_JUMP && $action !== MG_ACTION_RELEASE) {
+        if (!in_array($action, mg_valid_actions(), true)) {
             return ['ok' => false, 'code' => 'invalid_input', 'error' => 'Geçersiz aksiyon.'];
         }
         $lastTick = $tick;
@@ -264,7 +264,8 @@ function mg_run_risk(array $inputs, array $result, int $ticks, int $elapsed): ar
         $reasons[] = 'perfect_cells';
     }
 
-    if ($ticks > 0 && count($inputs) > intdiv($ticks, 15) + 12) {
+    // Ateş/eğilme girdileri meşrudur; bu eşik yalnızca anormal yoğunluğu yakalar.
+    if ($ticks > 0 && count($inputs) > intdiv($ticks, 5) + 80) {
         $risk++;
         $reasons[] = 'high_input_rate';
     }
@@ -285,6 +286,19 @@ function mg_run_risk(array $inputs, array $result, int $ticks, int $elapsed): ar
     if ($elapsed > 0 && $ticks >= 60 && count($inputs) === 0) {
         $risk++;
         $reasons[] = 'no_inputs_long_run';
+    }
+
+    $shots = 0;
+    foreach ($inputs as $input) {
+        if ((int)$input[1] === MG_ACTION_FIRE) {
+            $shots++;
+        }
+    }
+    $kills = (int)($result['kills'] ?? 0);
+    // 20+ düşman alt edip HİÇ hasar almamak insan için çok zordur (bot seviyesi).
+    if ($shots >= 40 && $kills >= 20 && (int)($result['damageTaken'] ?? 0) === 0) {
+        $risk++;
+        $reasons[] = 'perfect_accuracy_no_damage';
     }
 
     return ['risk' => $risk, 'reasons' => $reasons, 'pending' => $risk >= 2];
